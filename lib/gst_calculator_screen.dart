@@ -33,7 +33,8 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
   double _sgst = 0.0;
   double _igst = 0.0;
 
-  final List<double> _quickGstRates = [5, 12, 18, 28];
+  // MODIFIED: Added 0 to the list
+  final List<double> _quickGstRates = [0, 5, 12, 18, 28];
 
   @override
   void dispose() {
@@ -59,7 +60,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
       });
     }
   }
-  
+
   void _resetResults() {
     if (mounted) {
       setState(() {
@@ -80,20 +81,22 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
       final double amount = double.tryParse(_amountController.text) ?? 0.0;
       // Use _gstRateController.text for custom rate, _selectedQuickGstRate for quick selection
       final double gstRateFromField = double.tryParse(_gstRateController.text) ?? 0.0;
-      
+
       // Prioritize quick select rate if chosen and valid, otherwise use text field rate
       final double currentGstRate = _selectedQuickGstRate ?? gstRateFromField;
 
-      if (currentGstRate <= 0) {
+      // MODIFIED: Allow 0% GST, but not negative rates
+      if (currentGstRate < 0) {
         _resetResults();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('GST Rate must be greater than 0.')),
+            // MODIFIED: Updated message
+            const SnackBar(content: Text('GST Rate cannot be negative.')),
           );
         }
         return;
       }
-      
+
       bool isInclusiveModeSelected = _isSelectedMode[0]; // true if "Inclusive" is selected at index 0
       bool isIntraStateSelected = _isSelectedTransactionType[0]; // true if "Intra-State" is selected at index 0
 
@@ -104,7 +107,8 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
       if (isInclusiveModeSelected) {
         // Amount is Final Price
         calculatedFinalPrice = amount;
-        calculatedGstAmount = (amount * currentGstRate) / (100 + currentGstRate);
+        // Handle division by zero if currentGstRate is -100, though validation prevents this
+        calculatedGstAmount = (100 + currentGstRate == 0) ? 0 : (amount * currentGstRate) / (100 + currentGstRate);
         calculatedBasePrice = amount - calculatedGstAmount;
       } else {
         // Amount is Base Price
@@ -137,8 +141,9 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
   Widget build(BuildContext context) {
     // Determine current GST rate for display in results, ensuring it's not null or 0 before division
     double currentRateForDisplay() {
-        double rate = _selectedQuickGstRate ?? (double.tryParse(_gstRateController.text) ?? 0);
-        return rate > 0 ? rate : 0;
+      double rate = _selectedQuickGstRate ?? (double.tryParse(_gstRateController.text) ?? 0);
+      // MODIFIED: Allow 0 for display, but guard against negative if it somehow bypasses validation
+      return rate >= 0 ? rate : 0;
     }
 
     return Scaffold(
@@ -169,7 +174,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                   if (double.tryParse(value) == null) {
                     return 'Please enter a valid number';
                   }
-                   if (double.parse(value) <= 0) {
+                  if (double.parse(value) <= 0) { // Amount still must be > 0
                     return 'Amount must be > 0';
                   }
                   return null;
@@ -218,11 +223,11 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                 onTap: () { 
-                    if (_selectedQuickGstRate != null) {
-                       _resetRateSelection(keepCustomRate: true); // keepCustomRate true as user is now typing
-                    }
-                 },
+                onTap: () {
+                  if (_selectedQuickGstRate != null) {
+                    _resetRateSelection(keepCustomRate: true); // keepCustomRate true as user is now typing
+                  }
+                },
                 onChanged: (value) {
                   if (mounted) {
                     setState(() {
@@ -243,8 +248,10 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                     if (rateValue == null) {
                       return 'Please enter a valid rate';
                     }
-                    if (rateValue <= 0) {
-                       return 'Rate must be > 0';
+                    // MODIFIED: Allow 0%, but not negative
+                    if (rateValue < 0) {
+                      // MODIFIED: Updated message
+                      return 'Rate cannot be negative';
                     }
                   }
                   return null;
@@ -263,7 +270,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                       for (int i = 0; i < _isSelectedMode.length; i++) {
                         _isSelectedMode[i] = i == index;
                       }
-                       _resetResults();
+                      _resetResults();
                     });
                   }
                 },
@@ -275,7 +282,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Transaction Type Selector
               Text('Transaction Type', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
@@ -287,7 +294,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                       for (int i = 0; i < _isSelectedTransactionType.length; i++) {
                         _isSelectedTransactionType[i] = i == index;
                       }
-                       _resetResults();
+                      _resetResults();
                     });
                   }
                 },
@@ -312,7 +319,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
               const SizedBox(height: 30),
 
               // Results Section
-              if (_finalPrice > 0 || _basePrice > 0 || _gstAmountValue > 0)
+              if (_finalPrice > 0 || _basePrice > 0 || _gstAmountValue > 0 || (_amountController.text.isNotEmpty && (double.tryParse(_amountController.text) ?? 0) > 0) ) // Show card if results or valid amount
                 Card(
                   elevation: 2,
                   child: Padding(
@@ -325,10 +332,10 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
                         _buildResultRow('Base Price:', _basePrice.toStringAsFixed(2)),
                         _buildResultRow('GST Amount:', _gstAmountValue.toStringAsFixed(2)),
                         if (_isSelectedTransactionType[0]) ...[ // Intra-State
-                           _buildResultRow('  CGST (${(currentRateForDisplay() / 2).toStringAsFixed(1)}%):', _cgst.toStringAsFixed(2)),
-                           _buildResultRow('  SGST (${(currentRateForDisplay() / 2).toStringAsFixed(1)}%):', _sgst.toStringAsFixed(2)),
+                          _buildResultRow('  CGST (${(currentRateForDisplay() / 2).toStringAsFixed(1)}%):', _cgst.toStringAsFixed(2)),
+                          _buildResultRow('  SGST (${(currentRateForDisplay() / 2).toStringAsFixed(1)}%):', _sgst.toStringAsFixed(2)),
                         ] else ...[ // Inter-State
-                           _buildResultRow('  IGST (${currentRateForDisplay().toStringAsFixed(1)}%):', _igst.toStringAsFixed(2)),
+                          _buildResultRow('  IGST (${currentRateForDisplay().toStringAsFixed(1)}%):', _igst.toStringAsFixed(2)),
                         ],
                         const Divider(height: 20, thickness: 1),
                         _buildResultRow('Final Price:', _finalPrice.toStringAsFixed(2), isTotal: true),
