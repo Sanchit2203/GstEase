@@ -1,49 +1,65 @@
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gstease/login_screen.dart';
-import 'package:gstease/registration_screen.dart';
+import 'login_screen.dart'; // Assuming your login screen is here
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({Key? key}) : super(key: key);
+
+  static const String id = 'profile_screen'; // For named navigation
 
   @override
   Widget build(BuildContext context) {
+    // Get the current user
+    final User? user = FirebaseAuth.instance.currentUser;
+    final String? userEmail = user?.email;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        // The AppBar will be part of the main screen with BottomNavigationBar,
-        // so it might be better to remove this AppBar if ProfileScreen is only a body part.
-        // For now, let's keep it simple as it was originally.
+        automaticallyImplyLeading: false, // Don't show back button if navigated from login
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Manage your profile or login/register',
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-              child: const Text('Login'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RegistrationScreen()),
-                );
-              },
-              child: const Text('Register'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                'Welcome!',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              if (userEmail != null)
+                Text(
+                  'Email: $userEmail',
+                  style: TextStyle(fontSize: 18),
+                )
+              else
+                const Text(
+                  'Email: Not available',
+                  style: TextStyle(fontSize: 18),
+                ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                ),
+                child: const Text('Logout', style: TextStyle(fontSize: 18)),
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  // Navigate back to the login screen after logout
+                  // Make sure LoginScreen.id is defined in your login_screen.dart
+                  // or use MaterialPageRoute directly if not using named routes for login.
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    LoginScreen.id, 
+                    (Route<dynamic> route) => false
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

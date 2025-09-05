@@ -1,3 +1,4 @@
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gstease/firebase_options.dart'; // Import firebase_options.dart
@@ -5,6 +6,8 @@ import 'package:gstease/gst_calculator_screen.dart';
 import 'package:gstease/invoice_screen.dart';
 import 'package:gstease/rate_tracker_screen.dart';
 import 'package:gstease/profile_screen.dart';
+import 'package:gstease/login_screen.dart'; // Import LoginScreen
+import 'package:gstease/registration_screen.dart'; // Import RegistrationScreen
 
 void main() async { // Make main async
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +27,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'GSTEase'),
+      // Use initialRoute and routes for named navigation
+      initialRoute: LoginScreen.id, // Start with the LoginScreen
+      routes: {
+        LoginScreen.id: (context) => const LoginScreen(),
+        RegistrationScreen.id: (context) => const RegistrationScreen(),
+        MyHomePage.id: (context) => const MyHomePage(title: 'GSTEase'),
+        ProfileScreen.id: (context) => const ProfileScreen(), // For logout navigation
+      },
     );
   }
 }
@@ -33,6 +43,7 @@ class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
   final String title;
+  static const String id = 'my_home_page'; // For named navigation
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -144,15 +155,17 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     // Construct the list of widgets for the BottomNavigationBar here
+    // ProfileScreen is already designed to pick up the current user
     final List<Widget> widgetOptions = <Widget>[
       _buildDashboard(context), // Dashboard view
-      const ProfileScreen(),    // Profile screen
+      const ProfileScreen(),    // Profile screen (shows email and logout)
     ];
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        automaticallyImplyLeading: false, // Prevent back button on home page after login
       ),
       body: Center(
         child: widgetOptions.elementAt(_selectedIndex),

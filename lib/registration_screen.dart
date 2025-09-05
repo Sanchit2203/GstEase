@@ -1,8 +1,13 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+// import 'profile_screen.dart'; // No longer directly navigating here
+import 'login_screen.dart'; // Import LoginScreen for navigation
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
+
+  static const String id = 'registration_screen'; // For named navigation
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -39,7 +44,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Registration successful!')),
           );
-          Navigator.pop(context); // Go back to login or previous screen
+          // Navigate to MyHomePage (we will define its id as 'my_home_page' in main.dart)
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            'my_home_page', 
+            (Route<dynamic> route) => false
+          );
         }
       } on FirebaseAuthException catch (e) {
         String message;
@@ -136,7 +145,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
               TextButton(
                 onPressed: _isLoading ? null : () {
-                  Navigator.pop(context); // Go back to the previous screen (LoginScreen)
+                  // Navigate back to LoginScreen using named route
+                  Navigator.pushReplacementNamed(context, LoginScreen.id);
                 },
                 child: const Text('Already have an account? Login'),
               ),

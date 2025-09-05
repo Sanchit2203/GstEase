@@ -1,9 +1,13 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 import 'package:gstease/registration_screen.dart'; // To navigate to RegistrationScreen
+// import 'profile_screen.dart'; // No longer directly navigating here
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  static const String id = 'login_screen'; // For named navigation
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -38,9 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful!')),
           );
-          // Navigate to home/dashboard or pop, depending on your app flow
-          // For now, just pop to demonstrate success
-          Navigator.pop(context); 
+          // Navigate to MyHomePage (we will define its id as 'my_home_page' in main.dart)
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            'my_home_page', 
+            (Route<dynamic> route) => false
+          );
         }
       } on FirebaseAuthException catch (e) {
         String message;
@@ -119,10 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
               TextButton(
                 onPressed: _isLoading ? null : () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RegistrationScreen()),
-                  );
+                  Navigator.pushReplacementNamed(context, RegistrationScreen.id);
                 },
                 child: const Text('Don\'t have an account? Register'),
               ),
