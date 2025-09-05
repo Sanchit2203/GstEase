@@ -1,13 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:gstease/firebase_options.dart'; // Import firebase_options.dart
 import 'package:gstease/gst_calculator_screen.dart';
 import 'package:gstease/invoice_screen.dart';
 import 'package:gstease/rate_tracker_screen.dart';
 import 'package:gstease/profile_screen.dart';
 
-void main() {
+void main() async { // Make main async
   WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, // Use options from firebase_options.dart
+  );
   runApp(const MyApp());
 }
 
