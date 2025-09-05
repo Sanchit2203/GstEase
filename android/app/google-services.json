@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "130320733065",
+    "project_id": "gstease-2096c",
+    "storage_bucket": "gstease-2096c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:130320733065:android:0f86359570330416154758",
+        "android_client_info": {
+          "package_name": "com.example.gstease"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAA29sD5Bd6jIl0_vxWBxKYWTQ2RFRKmWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

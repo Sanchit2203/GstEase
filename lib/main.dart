@@ -1,10 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gstease/gst_calculator_screen.dart';
 import 'package:gstease/invoice_screen.dart';
 import 'package:gstease/rate_tracker_screen.dart';
-import 'package:gstease/profile_screen.dart'; // Import ProfileScreen
+import 'package:gstease/profile_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  Firebase.initializeApp();
   runApp(const MyApp());
 }
 
