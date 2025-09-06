@@ -149,6 +149,24 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('GST Calculator'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Add',
+            onPressed: () {
+              // TODO: Implement Add functionality
+              print('Add button pressed');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'History',
+            onPressed: () {
+              // TODO: Implement History functionality
+              print('History button pressed');
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
