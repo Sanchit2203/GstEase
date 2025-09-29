@@ -8,6 +8,10 @@ import 'package:gstease/rate_tracker_screen.dart';
 import 'package:gstease/profile_screen.dart';
 import 'package:gstease/login_screen.dart'; // Import LoginScreen
 import 'package:gstease/registration_screen.dart'; // Import RegistrationScreen
+import 'package:gstease/upi_payment_screen.dart'; // Import UPI Payment Screen
+import 'package:gstease/payment_history_screen.dart'; // Import Payment History Screen
+import 'package:gstease/upi_receive_screen.dart'; // Import UPI Receive Screen
+
 
 void main() async { // Make main async
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,7 +134,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Manage your GST calculations with ease',
+              'Manage GST calculations and payments with ease',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Colors.grey.shade600,
               ),
@@ -140,7 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.1,
+              childAspectRatio: 1.0,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
@@ -154,6 +158,32 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const GstCalculatorScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'UPI Payment',
+                  subtitle: 'Pay via UPI',
+                  icon: Icons.payment,
+                  colors: [const Color(0xFF4CAF50), const Color(0xFF8BC34A)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const UPIPaymentScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'Receive Payment',
+                  subtitle: 'Generate QR Code',
+                  icon: Icons.qr_code,
+                  colors: [const Color(0xFF00BCD4), const Color(0xFF4FC3F7)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const UPIReceiveScreen()),
                     );
                   },
                 ),
@@ -180,6 +210,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const RateTrackerScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'Payment History',
+                  subtitle: 'View transactions',
+                  icon: Icons.history,
+                  colors: [const Color(0xFF9C27B0), const Color(0xFFE91E63)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PaymentHistoryScreen()),
                     );
                   },
                 ),
