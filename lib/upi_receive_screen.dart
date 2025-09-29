@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/services.dart';
 
 class UPIReceiveScreen extends StatefulWidget {
   const UPIReceiveScreen({super.key});
@@ -30,6 +31,52 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
     }
     
     return upiUrl;
+  }
+
+  void _copyToClipboard() {
+    final upiUrl = _generateReceiveQR();
+    if (upiUrl.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: upiUrl));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('UPI link copied to clipboard!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _sharePaymentDetails() {
+    if (_upiIdController.text.isEmpty || _nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter UPI ID and name first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    String shareText = 'Pay ${_nameController.text} via UPI\n';
+    shareText += 'UPI ID: ${_upiIdController.text}\n';
+    
+    if (_amountController.text.isNotEmpty) {
+      shareText += 'Amount: ₹${_amountController.text}\n';
+    }
+    
+    if (_noteController.text.isNotEmpty) {
+      shareText += 'Note: ${_noteController.text}\n';
+    }
+    
+    shareText += '\nUPI Link: ${_generateReceiveQR()}';
+    
+    Clipboard.setData(ClipboardData(text: shareText));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Payment details copied to clipboard for sharing!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 
   @override
@@ -151,6 +198,36 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                             ),
                           ),
                         ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _copyToClipboard,
+                              icon: const Icon(Icons.copy),
+                              label: const Text('Copy Link'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _sharePaymentDetails,
+                              icon: const Icon(Icons.share),
+                              label: const Text('Share'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
