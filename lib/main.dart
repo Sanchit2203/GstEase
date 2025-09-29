@@ -11,6 +11,7 @@ import 'package:gstease/registration_screen.dart'; // Import RegistrationScreen
 import 'package:gstease/upi_payment_screen.dart'; // Import UPI Payment Screen
 import 'package:gstease/payment_history_screen.dart'; // Import Payment History Screen
 import 'package:gstease/upi_receive_screen.dart'; // Import UPI Receive Screen
+import 'package:gstease/reports_screen.dart'; // Import Reports Screen
 
 
 void main() async { // Make main async
@@ -233,9 +234,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   icon: Icons.analytics,
                   colors: [const Color(0xFF1565C0), const Color(0xFF2196F3)],
                   onTap: () {
-                    // TODO: Implement Reports screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Reports feature coming soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ReportsScreen()),
                     );
                   },
                 ),
