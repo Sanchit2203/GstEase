@@ -142,6 +142,22 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             const SizedBox(height: 32),
+            
+            // UPI SECTION
+            Row(
+              children: [
+                Icon(Icons.payment, color: Theme.of(context).colorScheme.primary, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'UPI Payment Services',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 16,
@@ -150,19 +166,6 @@ class _MyHomePageState extends State<MyHomePage> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _buildDashboardCard(
-                  context,
-                  title: 'GST Calculator',
-                  subtitle: 'Calculate GST quickly',
-                  icon: Icons.calculate,
-                  colors: [const Color(0xFF6750A4), const Color(0xFF8E7CC3)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const GstCalculatorScreen()),
-                    );
-                  },
-                ),
                 _buildDashboardCard(
                   context,
                   title: 'UPI Payment',
@@ -191,32 +194,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 _buildDashboardCard(
                   context,
-                  title: 'Invoice',
-                  subtitle: 'Generate invoices',
-                  icon: Icons.receipt_long,
-                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const InvoiceScreen()),
-                    );
-                  },
-                ),
-                _buildDashboardCard(
-                  context,
-                  title: 'Rate Tracker',
-                  subtitle: 'Track GST rates',
-                  icon: Icons.trending_up,
-                  colors: [const Color(0xFFE65100), const Color(0xFFFF9800)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RateTrackerScreen()),
-                    );
-                  },
-                ),
-                _buildDashboardCard(
-                  context,
                   title: 'Payment History',
                   subtitle: 'View transactions',
                   icon: Icons.history,
@@ -238,6 +215,73 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const ReportsScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // GST SECTION
+            Row(
+              children: [
+                Icon(Icons.calculate, color: Theme.of(context).colorScheme.secondary, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'GST Management',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.0,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildDashboardCard(
+                  context,
+                  title: 'GST Calculator',
+                  subtitle: 'Calculate GST quickly',
+                  icon: Icons.calculate,
+                  colors: [const Color(0xFF6750A4), const Color(0xFF8E7CC3)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const GstCalculatorScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'Invoice',
+                  subtitle: 'Generate invoices',
+                  icon: Icons.receipt_long,
+                  colors: [const Color(0xFF2E7D32), const Color(0xFF4CAF50)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const InvoiceScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'Rate Tracker',
+                  subtitle: 'Track GST rates',
+                  icon: Icons.trending_up,
+                  colors: [const Color(0xFFE65100), const Color(0xFFFF9800)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RateTrackerScreen()),
                     );
                   },
                 ),
