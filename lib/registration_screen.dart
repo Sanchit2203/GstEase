@@ -44,11 +44,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Registration successful!')),
           );
-          // Navigate to MyHomePage (we will define its id as 'my_home_page' in main.dart)
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            'my_home_page', 
-            (Route<dynamic> route) => false
-          );
+          // AuthWrapper will automatically handle navigation after registration
         }
       } on FirebaseAuthException catch (e) {
         String message;

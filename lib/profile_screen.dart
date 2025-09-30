@@ -1,7 +1,6 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -299,12 +298,7 @@ class ProfileScreen extends StatelessWidget {
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
                 await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    LoginScreen.id,
-                    (Route<dynamic> route) => false,
-                  );
-                }
+                // AuthWrapper will automatically handle navigation after logout
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

@@ -2,6 +2,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gstease/firebase_options.dart'; // Import firebase_options.dart
+import 'package:gstease/auth_wrapper.dart'; // Import AuthWrapper
 import 'package:gstease/gst_calculator_screen.dart';
 import 'package:gstease/invoice_screen.dart';
 import 'package:gstease/rate_tracker_screen.dart';
@@ -84,8 +85,8 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      // Use initialRoute and routes for named navigation
-      initialRoute: LoginScreen.id, // Start with the LoginScreen
+      // Use AuthWrapper to handle authentication state
+      home: const AuthWrapper(),
       routes: {
         LoginScreen.id: (context) => const LoginScreen(),
         RegistrationScreen.id: (context) => const RegistrationScreen(),

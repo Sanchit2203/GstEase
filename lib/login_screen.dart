@@ -42,11 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful!')),
           );
-          // Navigate to MyHomePage (we will define its id as 'my_home_page' in main.dart)
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            'my_home_page', 
-            (Route<dynamic> route) => false
-          );
+          // AuthWrapper will automatically handle navigation after login
         }
       } on FirebaseAuthException catch (e) {
         String message;
