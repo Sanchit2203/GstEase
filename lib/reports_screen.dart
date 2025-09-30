@@ -77,7 +77,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.8), color],
+            colors: [color.withValues(alpha: 0.8), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -93,7 +93,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.trending_up, color: Colors.white, size: 16),
@@ -114,7 +114,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               title,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -164,7 +164,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                              Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
                               Theme.of(context).colorScheme.primary,
                             ],
                             begin: Alignment.topCenter,
@@ -240,7 +240,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: recentTransactions.map((transaction) {
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: _getStatusColor(transaction['status']).withOpacity(0.1),
+                      backgroundColor: _getStatusColor(transaction['status']).withValues(alpha: 0.1),
                       child: Icon(
                         _getStatusIcon(transaction['status']),
                         color: _getStatusColor(transaction['status']),
@@ -252,7 +252,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(transaction['status']).withOpacity(0.1),
+                        color: _getStatusColor(transaction['status']).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
