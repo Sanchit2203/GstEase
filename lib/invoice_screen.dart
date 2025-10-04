@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
 
 class InvoiceScreen extends StatefulWidget {
   const InvoiceScreen({super.key});
@@ -13,6 +20,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
   
   // Form controllers
   final _formKey = GlobalKey<FormState>();
+  final _invoiceNumberController = TextEditingController();
   final _customerNameController = TextEditingController();
   final _customerEmailController = TextEditingController();
   final _customerAddressController = TextEditingController();
@@ -31,11 +39,16 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _addInvoiceItem(); // Add first item by default
+    
+    // Generate default invoice number
+    final now = DateTime.now();
+    _invoiceNumberController.text = 'INV-${now.millisecondsSinceEpoch.toString().substring(8)}';
   }
   
   @override
   void dispose() {
     _tabController.dispose();
+    _invoiceNumberController.dispose();
     _customerNameController.dispose();
     _customerEmailController.dispose();
     _customerAddressController.dispose();
@@ -78,6 +91,557 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
     });
   }
 
+  // Generate PDF document
+  Future<pw.Document> _generatePDF() async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final invoiceNumber = _invoiceNumberController.text.isNotEmpty 
+        ? _invoiceNumberController.text 
+        : 'INV-${now.millisecondsSinceEpoch.toString().substring(8)}';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return [
+            // Header
+            pw.Container(
+              padding: const pw.EdgeInsets.all(20),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue600,
+                borderRadius: pw.BorderRadius.circular(10),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'INVOICE',
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 32,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        'Invoice #: $invoiceNumber',
+                        style: const pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'GSTEase',
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 20,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Date: ${now.day}/${now.month}/${now.year}',
+                        style: const pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            pw.SizedBox(height: 30),
+            
+            // Bill To Section
+            if (_customerNameController.text.isNotEmpty) ...[
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'BILL TO:',
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue800,
+                      ),
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Text(
+                      _customerNameController.text,
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    if (_customerEmailController.text.isNotEmpty) ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        'Email: ${_customerEmailController.text}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    ],
+                    if (_gstinController.text.isNotEmpty) ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        'GSTIN: ${_gstinController.text}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    ],
+                    if (_customerAddressController.text.isNotEmpty) ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        'Address: ${_customerAddressController.text}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 30),
+            ],
+            
+            // Items Table
+            pw.Text(
+              'ITEMS & SERVICES',
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue800,
+              ),
+            ),
+            pw.SizedBox(height: 15),
+            
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey400),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(3),
+                1: const pw.FlexColumnWidth(1),
+                2: const pw.FlexColumnWidth(1.5),
+                3: const pw.FlexColumnWidth(1),
+                4: const pw.FlexColumnWidth(1.5),
+              },
+              children: [
+                // Header
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey200,
+                  ),
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        'Description',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        'Qty',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        'Rate (₹)',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.right,
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        'GST%',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        'Total (₹)',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+                // Items
+                for (var item in _invoiceItems)
+                  if (item.isValid())
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(item.description),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            item.quantity.toString(),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            item.rate.toStringAsFixed(2),
+                            textAlign: pw.TextAlign.right,
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            '${item.gstRate}%',
+                            textAlign: pw.TextAlign.center,
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            ((item.quantity * item.rate) + ((item.quantity * item.rate * item.gstRate) / 100)).toStringAsFixed(2),
+                            textAlign: pw.TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+              ],
+            ),
+            
+            pw.SizedBox(height: 30),
+            
+            // Totals Section
+            pw.Container(
+              padding: const pw.EdgeInsets.all(20),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue50,
+                borderRadius: pw.BorderRadius.circular(10),
+                border: pw.Border.all(color: PdfColors.blue200),
+              ),
+              child: pw.Column(
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 14)),
+                      pw.Text('₹ ${_subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Total GST:', style: const pw.TextStyle(fontSize: 14)),
+                      pw.Text('₹ ${_totalGst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 15),
+                  pw.Container(
+                    width: double.infinity,
+                    height: 2,
+                    color: PdfColors.blue600,
+                  ),
+                  pw.SizedBox(height: 15),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'GRAND TOTAL:',
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue800,
+                        ),
+                      ),
+                      pw.Text(
+                        '₹ ${_grandTotal.toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                          fontSize: 20,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            pw.SizedBox(height: 30),
+            
+            // Footer
+            pw.Container(
+              padding: const pw.EdgeInsets.all(15),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Terms & Conditions:',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    '• Payment is due within 30 days of invoice date',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.Text(
+                    '• Late payments may incur additional charges',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.Text(
+                    '• All prices are inclusive of applicable GST',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Thank you for your business!',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blue600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    return pdf;
+  }
+
+  // Generate and preview PDF
+  Future<void> _generateAndPreviewPDF() async {
+    if (!_validateInvoiceData()) return;
+    
+    try {
+      final pdf = await _generatePDF();
+      
+      // Show PDF preview with print/share options
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Invoice_${DateTime.now().millisecondsSinceEpoch}',
+      );
+    } catch (e) {
+      _showErrorDialog('Failed to generate PDF: $e');
+    }
+  }
+
+  // Generate and save PDF to device
+  Future<void> _generateAndSavePDF() async {
+    if (!_validateInvoiceData()) return;
+    
+    try {
+      // Request storage permission for Android
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          _showErrorDialog('Storage permission is required to save PDF files');
+          return;
+        }
+      }
+      
+      final pdf = await _generatePDF();
+      final bytes = await pdf.save();
+      
+      // Get appropriate directory for saving
+      Directory? directory;
+      String locationDescription;
+      
+      if (Platform.isAndroid) {
+        // Try to use Downloads folder first
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          // Fallback to external storage directory
+          directory = await getExternalStorageDirectory();
+          directory = directory != null ? Directory('${directory.path}/Download') : null;
+          if (directory != null && !await directory.exists()) {
+            await directory.create(recursive: true);
+          }
+        }
+        locationDescription = 'Downloads folder';
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+        locationDescription = 'Documents folder';
+      }
+      
+      if (directory != null) {
+        final fileName = 'Invoice_${_invoiceNumberController.text.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        final filePath = '${directory.path}/$fileName';
+        
+        // Write PDF to file
+        final file = File(filePath);
+        await file.writeAsBytes(bytes);
+        
+        // Show success message with file location
+        _showSuccessDialog(
+          'PDF Saved Successfully!', 
+          'File saved to $locationDescription:\n\n$fileName\n\nYou can find it in your device\'s file manager.'
+        );
+      } else {
+        _showErrorDialog('Could not access storage directory');
+      }
+      
+    } catch (e) {
+      _showErrorDialog('Failed to save PDF: ${e.toString()}');
+    }
+  }
+
+  // Generate and share PDF
+  Future<void> _generateAndSharePDF() async {
+    if (!_validateInvoiceData()) return;
+    
+    try {
+      final pdf = await _generatePDF();
+      final bytes = await pdf.save();
+      
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final fileName = 'Invoice_${_invoiceNumberController.text}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${directory.path}/$fileName';
+      
+      // Write PDF to file
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
+      
+      // Share the PDF file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        text: 'Invoice from GSTEase',
+        subject: 'Invoice - ${_customerNameController.text.isNotEmpty ? _customerNameController.text : 'Customer'}',
+      );
+      
+    } catch (e) {
+      _showErrorDialog('Failed to share PDF: $e');
+    }
+  }
+
+  // Validate invoice data before PDF generation
+  bool _validateInvoiceData() {
+    if (_invoiceNumberController.text.isEmpty) {
+      _showErrorDialog('Please enter invoice number before generating PDF');
+      _tabController.animateTo(0); // Switch to customer tab
+      return false;
+    }
+    
+    if (_customerNameController.text.isEmpty) {
+      _showErrorDialog('Please enter customer name before generating PDF');
+      _tabController.animateTo(0); // Switch to customer tab
+      return false;
+    }
+    
+    if (_invoiceItems.isEmpty || !_invoiceItems.any((item) => item.isValid())) {
+      _showErrorDialog('Please add at least one valid item before generating PDF');
+      _tabController.animateTo(1); // Switch to items tab
+      return false;
+    }
+    
+    return true;
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Error'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show success dialog
+  void _showSuccessDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.folder_open, color: Colors.green, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Open your file manager to view the saved PDF.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,23 +679,54 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
           ],
         ),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
-            tooltip: 'Generate PDF',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('PDF generation coming soon!')),
-              );
+            tooltip: 'PDF Options',
+            onSelected: (String value) {
+              switch (value) {
+                case 'preview':
+                  _generateAndPreviewPDF();
+                  break;
+                case 'save':
+                  _generateAndSavePDF();
+                  break;
+                case 'share':
+                  _generateAndSharePDF();
+                  break;
+              }
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.blue),
-            tooltip: 'Share Invoice',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Share feature coming soon!')),
-              );
-            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'preview',
+                child: Row(
+                  children: [
+                    Icon(Icons.preview, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Preview PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'save',
+                child: Row(
+                  children: [
+                    Icon(Icons.save_alt, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Save PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Share PDF'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -184,6 +779,22 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
                       ],
                     ),
                     const SizedBox(height: 20),
+                    
+                    TextFormField(
+                      controller: _invoiceNumberController,
+                      decoration: const InputDecoration(
+                        labelText: 'Invoice Number',
+                        prefixIcon: Icon(Icons.receipt_long),
+                        hintText: 'Enter invoice number',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Invoice number is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     
                     TextFormField(
                       controller: _customerNameController,
@@ -511,6 +1122,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        if (_invoiceNumberController.text.isNotEmpty)
+                          Text(
+                            'Invoice #: ${_invoiceNumberController.text}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                         Text(
                           'Date: ${DateTime.now().toString().split(' ')[0]}',
                           style: const TextStyle(color: Colors.white70),
@@ -617,6 +1233,57 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
                     _buildTotalRow('Grand Total:', _grandTotal, isGrandTotal: true),
                   ],
                 ),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // PDF Action Buttons
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _generateAndPreviewPDF,
+                          icon: const Icon(Icons.preview),
+                          label: const Text('Preview PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _generateAndSavePDF,
+                          icon: const Icon(Icons.save_alt),
+                          label: const Text('Save PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _generateAndSharePDF,
+                      icon: const Icon(Icons.share),
+                      label: const Text('Share PDF'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
