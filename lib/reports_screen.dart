@@ -64,6 +64,61 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  // Calculate monthly transaction data from actual transactions
+  Map<String, double> _calculateMonthlyData() {
+    final now = DateTime.now();
+    final Map<String, double> monthlyData = {};
+    
+    // Initialize last 6 months with zero values
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final monthKey = _getMonthAbbreviation(month.month);
+      monthlyData[monthKey] = 0.0;
+    }
+    
+    // If no transactions, return months with zero values
+    if (transactions.isEmpty) {
+      return monthlyData;
+    }
+    
+    // Calculate actual monthly totals from transactions
+    for (var transaction in transactions) {
+      try {
+        // Parse transaction timestamp
+        String timestampStr = transaction['timestamp']?.toString() ?? '';
+        if (timestampStr.isEmpty) continue;
+        
+        DateTime transactionDate = DateTime.parse(timestampStr);
+        String monthKey = _getMonthAbbreviation(transactionDate.month);
+        
+        // Only include transactions from the last 6 months
+        if (monthlyData.containsKey(monthKey)) {
+          double amount = double.tryParse(transaction['amount'].toString()) ?? 0.0;
+          String status = transaction['status'].toString().toLowerCase();
+          
+          // Only count successful transactions
+          if (status == 'success') {
+            monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + amount;
+          }
+        }
+      } catch (e) {
+        // Skip invalid transaction dates
+        continue;
+      }
+    }
+    
+    return monthlyData;
+  }
+
+  // Get month abbreviation from month number
+  String _getMonthAbbreviation(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
+  }
+
   Widget _buildStatCard({
     required String title,
     required String value,
@@ -124,9 +179,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildMonthlyChart() {
-    // Generate dummy data for the chart
-    List<double> monthlyData = [150, 280, 320, 180, 450, 380];
-    List<String> months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Generate dynamic data based on actual transactions
+    final Map<String, double> monthlyTransactionData = _calculateMonthlyData();
+    final List<double> monthlyData = monthlyTransactionData.values.toList();
+    final List<String> months = monthlyTransactionData.keys.toList();
     
     return Card(
       elevation: 4,
@@ -145,46 +201,91 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const SizedBox(height: 20),
             SizedBox(
               height: 200,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(monthlyData.length, (index) {
-                  double normalizedHeight = (monthlyData[index] / 500) * 150;
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${monthlyData[index].toInt()}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: 30,
-                        height: normalizedHeight,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                              Theme.of(context).colorScheme.primary,
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
+              child: monthlyData.isEmpty || monthlyData.every((value) => value == 0) 
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bar_chart,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No transaction data available',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
-                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        months[index],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Chart will update as you make transactions',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
+                      ],
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(monthlyData.length, (index) {
+                      // Find the maximum value for proper scaling
+                      double maxValue = monthlyData.isNotEmpty 
+                          ? monthlyData.reduce((a, b) => a > b ? a : b) 
+                          : 100;
+                      if (maxValue == 0) maxValue = 100; // Prevent division by zero
+                      
+                      double normalizedHeight = (monthlyData[index] / maxValue) * 150;
+                      if (normalizedHeight < 10 && monthlyData[index] > 0) {
+                        normalizedHeight = 10; // Minimum height for visibility
+                      }
+                      
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            monthlyData[index] > 0 
+                                ? '₹${monthlyData[index].toInt()}' 
+                                : '₹0',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 30,
+                            height: normalizedHeight,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: monthlyData[index] > 0 ? [
+                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                                  Theme.of(context).colorScheme.primary,
+                                ] : [
+                                  Colors.grey.shade300,
+                                  Colors.grey.shade400,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            months[index],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
             ),
           ],
         ),
