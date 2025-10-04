@@ -10,7 +10,7 @@ import 'package:gstease/profile_screen.dart';
 import 'package:gstease/login_screen.dart'; // Import LoginScreen
 import 'package:gstease/registration_screen.dart'; // Import RegistrationScreen
 import 'package:gstease/upi_payment_screen.dart'; // Import UPI Payment Screen
-import 'package:gstease/payment_history_screen.dart'; // Import Payment History Screen
+
 import 'package:gstease/upi_receive_screen.dart'; // Import UPI Receive Screen
 import 'package:gstease/reports_screen.dart'; // Import Reports Screen
 
@@ -158,65 +158,59 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+            Row(
               children: [
-                _buildDashboardCard(
-                  context,
-                  title: 'UPI Payment',
-                  subtitle: 'Pay via UPI',
-                  icon: Icons.payment,
-                  colors: [const Color(0xFF4CAF50), const Color(0xFF8BC34A)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const UPIPaymentScreen()),
-                    );
-                  },
+                Expanded(
+                  child: _buildDashboardCard(
+                    context,
+                    title: 'UPI Payment',
+                    subtitle: 'Pay via UPI',
+                    icon: Icons.payment,
+                    colors: [const Color(0xFF4CAF50), const Color(0xFF8BC34A)],
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UPIPaymentScreen()),
+                      );
+                    },
+                  ),
                 ),
-                _buildDashboardCard(
-                  context,
-                  title: 'Receive Payment',
-                  subtitle: 'Generate QR Code',
-                  icon: Icons.qr_code,
-                  colors: [const Color(0xFF00BCD4), const Color(0xFF4FC3F7)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const UPIReceiveScreen()),
-                    );
-                  },
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildDashboardCard(
+                    context,
+                    title: 'Receive Payment',
+                    subtitle: 'Generate QR Code',
+                    icon: Icons.qr_code,
+                    colors: [const Color(0xFF00BCD4), const Color(0xFF4FC3F7)],
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UPIReceiveScreen()),
+                      );
+                    },
+                  ),
                 ),
-                _buildDashboardCard(
-                  context,
-                  title: 'Payment History',
-                  subtitle: 'View transactions',
-                  icon: Icons.history,
-                  colors: [const Color(0xFF9C27B0), const Color(0xFFE91E63)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PaymentHistoryScreen()),
-                    );
-                  },
-                ),
-                _buildDashboardCard(
-                  context,
-                  title: 'Reports',
-                  subtitle: 'View analytics',
-                  icon: Icons.analytics,
-                  colors: [const Color(0xFF1565C0), const Color(0xFF2196F3)],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ReportsScreen()),
-                    );
-                  },
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.45,
+                  child: _buildDashboardCard(
+                    context,
+                    title: 'Reports & Analytics',
+                    subtitle: 'View transactions & analytics',
+                    icon: Icons.analytics,
+                    colors: [const Color(0xFF1565C0), const Color(0xFF2196F3)],
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ReportsScreen()),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

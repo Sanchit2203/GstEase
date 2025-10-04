@@ -9,18 +9,26 @@ class ReportsScreen extends StatefulWidget {
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _ReportsScreenState extends State<ReportsScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> transactions = [];
   bool isLoading = true;
   double totalAmount = 0.0;
   int successfulPayments = 0;
   int failedPayments = 0;
   int pendingPayments = 0;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadAnalytics();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAnalytics() async {
@@ -119,6 +127,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return months[month - 1];
   }
 
+  // Add demo transaction (merged from payment history screen)
+  Future<void> _addDemoTransaction() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> transactions = prefs.getStringList('payment_history') ?? [];
+    
+    Map<String, dynamic> demoTransaction = {
+      'id': 'DEMO${DateTime.now().millisecondsSinceEpoch}',
+      'amount': '100.00',
+      'receiverName': 'Demo Merchant',
+      'receiverUpiId': 'demo@upi',
+      'note': 'Demo GST Payment',
+      'status': 'Success',
+      'timestamp': DateTime.now().toIso8601String(),
+      'transactionId': 'DEMO${DateTime.now().millisecondsSinceEpoch}',
+    };
+    
+    transactions.add(jsonEncode(demoTransaction));
+    await prefs.setStringList('payment_history', transactions);
+    _loadAnalytics(); // Refresh data
+  }
+
   Widget _buildStatCard({
     required String title,
     required String value,
@@ -132,7 +161,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.8), color],
+            colors: [color.withOpacity(0.8), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -148,7 +177,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: Colors.white.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.trending_up, color: Colors.white, size: 16),
@@ -169,7 +198,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               title,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: Colors.white.withOpacity(0.8),
               ),
             ),
           ],
@@ -262,7 +291,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: monthlyData[index] > 0 ? [
-                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                                  Theme.of(context).colorScheme.primary.withOpacity(0.7),
                                   Theme.of(context).colorScheme.primary,
                                 ] : [
                                   Colors.grey.shade300,
@@ -293,6 +322,170 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  // Build analytics tab (existing content)
+  Widget _buildAnalyticsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Statistics Cards
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildStatCard(
+                title: 'Total Amount',
+                value: '₹${totalAmount.toStringAsFixed(2)}',
+                icon: Icons.currency_rupee,
+                color: const Color(0xFF4CAF50),
+              ),
+              _buildStatCard(
+                title: 'Successful',
+                value: successfulPayments.toString(),
+                icon: Icons.check_circle,
+                color: const Color(0xFF2196F3),
+              ),
+              _buildStatCard(
+                title: 'Failed',
+                value: failedPayments.toString(),
+                icon: Icons.error,
+                color: const Color(0xFFF44336),
+              ),
+              _buildStatCard(
+                title: 'Pending',
+                value: pendingPayments.toString(),
+                icon: Icons.access_time,
+                color: const Color(0xFFFF9800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Monthly Chart
+          _buildMonthlyChart(),
+          const SizedBox(height: 24),
+          
+          // Recent Transactions
+          _buildRecentTransactions(),
+        ],
+      ),
+    );
+  }
+
+  // Build payment history tab (merged from payment history screen)
+  Widget _buildPaymentHistoryTab() {
+    List<Map<String, dynamic>> sortedTransactions = List.from(transactions);
+    sortedTransactions.sort((a, b) => 
+      DateTime.parse(b['timestamp'] ?? DateTime.now().toIso8601String())
+          .compareTo(DateTime.parse(a['timestamp'] ?? DateTime.now().toIso8601String())));
+
+    return transactions.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Payment History',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your payment transactions will appear here',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _addDemoTransaction,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Demo Transaction'),
+                ),
+              ],
+            ),
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: sortedTransactions.length,
+            itemBuilder: (context, index) {
+              final transaction = sortedTransactions[index];
+              return Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: CircleAvatar(
+                    backgroundColor: _getStatusColor(transaction['status']).withOpacity(0.2),
+                    child: Icon(
+                      _getStatusIcon(transaction['status']),
+                      color: _getStatusColor(transaction['status']),
+                    ),
+                  ),
+                  title: Text(
+                    '₹${transaction['amount']}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        'To: ${transaction['receiverName']}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      if (transaction['note'] != null && transaction['note'].isNotEmpty)
+                        Text('Note: ${transaction['note']}'),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDateTime(transaction['timestamp'] ?? ''),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(transaction['status']).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _getStatusColor(transaction['status']).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      transaction['status'],
+                      style: TextStyle(
+                        color: _getStatusColor(transaction['status']),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+  }
+
   Widget _buildRecentTransactions() {
     List<Map<String, dynamic>> recentTransactions = transactions.take(5).toList();
     
@@ -315,8 +508,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    // Navigate to payment history
+                    _tabController.animateTo(1); // Switch to payment history tab
                   },
                   child: const Text('View All'),
                 ),
@@ -341,7 +533,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: recentTransactions.map((transaction) {
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: _getStatusColor(transaction['status']).withValues(alpha: 0.1),
+                      backgroundColor: _getStatusColor(transaction['status']).withOpacity(0.1),
                       child: Icon(
                         _getStatusIcon(transaction['status']),
                         color: _getStatusColor(transaction['status']),
@@ -353,7 +545,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(transaction['status']).withValues(alpha: 0.1),
+                        color: _getStatusColor(transaction['status']).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -372,6 +564,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to format date time
+  String _formatDateTime(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inDays == 0) {
+        return 'Today ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+    } catch (e) {
+      return 'Unknown date';
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -407,7 +620,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: const Text('Reports & Analytics'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Theme.of(context).colorScheme.primary,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Colors.grey.shade600,
+          tabs: const [
+            Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
+            Tab(icon: Icon(Icons.history), text: 'Payment History'),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _addDemoTransaction,
+            tooltip: 'Add Demo Transaction',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -421,56 +649,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Statistics Cards
-                  GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildStatCard(
-                        title: 'Total Amount',
-                        value: '₹${totalAmount.toStringAsFixed(2)}',
-                        icon: Icons.currency_rupee,
-                        color: const Color(0xFF4CAF50),
-                      ),
-                      _buildStatCard(
-                        title: 'Successful',
-                        value: successfulPayments.toString(),
-                        icon: Icons.check_circle,
-                        color: const Color(0xFF2196F3),
-                      ),
-                      _buildStatCard(
-                        title: 'Failed',
-                        value: failedPayments.toString(),
-                        icon: Icons.error,
-                        color: const Color(0xFFF44336),
-                      ),
-                      _buildStatCard(
-                        title: 'Pending',
-                        value: pendingPayments.toString(),
-                        icon: Icons.access_time,
-                        color: const Color(0xFFFF9800),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Monthly Chart
-                  _buildMonthlyChart(),
-                  const SizedBox(height: 24),
-                  
-                  // Recent Transactions
-                  _buildRecentTransactions(),
-                ],
-              ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAnalyticsTab(),
+                _buildPaymentHistoryTab(),
+              ],
             ),
     );
   }
