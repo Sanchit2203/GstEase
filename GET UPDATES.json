@@ -1,0 +1,67 @@
+{
+	"info": {
+		"_postman_id": "42435e7e-1839-4d43-a19b-20ed1b3a59c9",
+		"name": "New Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34273808"
+	},
+	"item": [
+		{
+			"name": "GET UPDATES",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "auth-token",
+						"value": "",
+						"type": "text"
+					},
+					{
+						"key": "clientid",
+						"value": "",
+						"type": "text"
+					},
+					{
+						"key": "client-secret",
+						"value": "",
+						"type": "text"
+					},
+					{
+						"key": "ip-usr",
+						"value": "",
+						"type": "text"
+					},
+					{
+						"key": "username",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://gspapi.internal.gst.gov.in/irpapi/v1.0/einvoice/getUpdates?ACTION=null",
+					"protocol": "https",
+					"host": [
+						"gspapi",
+						"internal",
+						"gst",
+						"gov",
+						"in"
+					],
+					"path": [
+						"irpapi",
+						"v1.0",
+						"einvoice",
+						"getUpdates"
+					],
+					"query": [
+						{
+							"key": "ACTION",
+							"value": "null"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
