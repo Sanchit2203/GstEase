@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 class UPIReceiveScreen extends StatefulWidget {
   const UPIReceiveScreen({super.key});
@@ -57,25 +58,46 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
       return;
     }
 
-    String shareText = 'Pay ${_nameController.text} via UPI\n';
-    shareText += 'UPI ID: ${_upiIdController.text}\n';
+    String shareText = '💳 Pay ${_nameController.text} via UPI\n\n';
+    shareText += '📱 UPI ID: ${_upiIdController.text}\n';
     
     if (_amountController.text.isNotEmpty) {
-      shareText += 'Amount: ₹${_amountController.text}\n';
+      shareText += '💰 Amount: ₹${_amountController.text}\n';
     }
     
     if (_noteController.text.isNotEmpty) {
-      shareText += 'Note: ${_noteController.text}\n';
+      shareText += '📝 Note: ${_noteController.text}\n';
     }
     
-    shareText += '\nUPI Link: ${_generateReceiveQR()}';
+    shareText += '\n🔗 UPI Link: ${_generateReceiveQR()}\n\n';
+    shareText += 'Scan the QR code or click the UPI link to pay instantly!';
     
-    Clipboard.setData(ClipboardData(text: shareText));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Payment details copied to clipboard for sharing!'),
-        backgroundColor: Colors.blue,
-      ),
+    // Use share_plus to let user choose sharing app
+    Share.share(
+      shareText,
+      subject: 'Payment Request - ${_nameController.text}',
+    );
+  }
+
+  void _shareQRCodeOnly() {
+    if (_upiIdController.text.isEmpty || _nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter UPI ID and name first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final upiLink = _generateReceiveQR();
+    String shareText = '💳 Payment QR Code - ${_nameController.text}\n\n';
+    shareText += '🔗 UPI Link: $upiLink\n\n';
+    shareText += 'Click the link or scan the QR code to pay!';
+    
+    Share.share(
+      shareText,
+      subject: 'Payment QR Code - ${_nameController.text}',
     );
   }
 
@@ -213,12 +235,25 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _shareQRCodeOnly,
+                              icon: const Icon(Icons.qr_code),
+                              label: const Text('Share QR'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: _sharePaymentDetails,
                               icon: const Icon(Icons.share),
-                              label: const Text('Share'),
+                              label: const Text('Share All'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
