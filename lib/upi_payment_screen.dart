@@ -62,7 +62,7 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
       'amount': _amountController.text,
       'receiverName': _nameController.text,
       'receiverUpiId': _upiIdController.text,
-      'note': _noteController.text.isEmpty ? 'GST Payment' : _noteController.text,
+      'note': _noteController.text.isEmpty ? 'Payment' : _noteController.text,
       'status': status,
       'timestamp': DateTime.now().toIso8601String(),
       'transactionId': 'TXN${DateTime.now().millisecondsSinceEpoch}',
