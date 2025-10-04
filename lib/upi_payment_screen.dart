@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
@@ -17,16 +16,9 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
-  // Popular UPI apps with their package names
-  final List<Map<String, String>> upiApps = [
-    {'name': 'PhonePe', 'package': 'com.phonepe.app', 'icon': '📱'},
-    {'name': 'Google Pay', 'package': 'com.google.android.apps.nbu.paisa.user', 'icon': '💳'},
-    {'name': 'Paytm', 'package': 'net.one97.paytm', 'icon': '💰'},
-    {'name': 'BHIM UPI', 'package': 'in.org.npci.upiapp', 'icon': '🏦'},
-    {'name': 'Amazon Pay', 'package': 'com.amazon.mobile.shopping', 'icon': '📦'},
-  ];
 
-  Future<void> _initiatePayment(String appPackage) async {
+
+  Future<void> _initiatePayment() async {
     if (_validateInputs()) {
       final upiUrl = _generateUpiUrl();
       try {
@@ -130,49 +122,13 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
     return 'upi://pay?pa=${_upiIdController.text}&pn=${_nameController.text}&am=${_amountController.text}&tn=${_noteController.text.isEmpty ? 'GST Payment' : _noteController.text}&cu=INR';
   }
 
-  void _showQrCode() {
-    if (_validateInputs()) {
-      final upiUrl = _generateUpiUrl();
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('UPI QR Code'),
-          content: SizedBox(
-            width: 280,
-            height: 280,
-            child: Column(
-              children: [
-                QrImageView(
-                  data: upiUrl,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                  backgroundColor: Colors.white,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Scan this QR code with any UPI app to pay',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('UPI Payment'),
+        title: const Text('Make Payment'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -232,69 +188,54 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _showQrCode,
-                    icon: const Icon(Icons.qr_code),
-                    label: const Text('Generate QR Code'),
+                    onPressed: _initiatePayment,
+                    icon: const Icon(Icons.payment),
+                    label: const Text('Make Payment'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: const Color(0xFF4CAF50),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Select UPI App',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
             const SizedBox(height: 16),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.8,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
               ),
-              itemCount: upiApps.length,
-              itemBuilder: (context, index) {
-                final app = upiApps[index];
-                return Card(
-                  elevation: 2,
-                  child: InkWell(
-                    onTap: () => _initiatePayment(app['package']!),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            app['icon']!,
-                            style: const TextStyle(fontSize: 48),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            app['name']!,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.blue.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Click "Make Payment" to choose your preferred UPI app and complete the transaction.',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 14,
                       ),
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ],
         ),

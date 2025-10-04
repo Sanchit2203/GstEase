@@ -163,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Expanded(
                   child: _buildDashboardCard(
                     context,
-                    title: 'UPI Payment',
+                    title: 'Make Payment',
                     subtitle: 'Pay via UPI',
                     icon: Icons.payment,
                     colors: [const Color(0xFF4CAF50), const Color(0xFF8BC34A)],
