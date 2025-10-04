@@ -19,6 +19,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false; // For loading indicator
+  bool _isPasswordVisible = false; // For password visibility toggle
+  bool _isConfirmPasswordVisible = false; // For confirm password visibility toggle
 
   @override
   void dispose() {
@@ -40,11 +42,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         );
         // Registration successful
         print('Registered user: ${userCredential.user?.uid}');
+        
+        // Sign out the user immediately after registration
+        // so they have to manually log in through the login screen
+        await FirebaseAuth.instance.signOut();
+        
         if (mounted) { // Check if the widget is still in the tree
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration successful!')),
+            const SnackBar(content: Text('Registration successful! Please sign in with your credentials.')),
           );
-          // AuthWrapper will automatically handle navigation after registration
+          // Navigate to login screen after successful registration
+          Navigator.pushReplacementNamed(context, LoginScreen.id);
         }
       } on FirebaseAuthException catch (e) {
         String message;
@@ -161,12 +169,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         // Password field
                         TextFormField(
                           controller: _passwordController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline),
                             hintText: 'Enter your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible 
+                                    ? Icons.visibility_off 
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
+                            ),
                           ),
-                          obscureText: true,
+                          obscureText: !_isPasswordVisible,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
@@ -182,12 +202,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         // Confirm Password field
                         TextFormField(
                           controller: _confirmPasswordController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Confirm Password',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline),
                             hintText: 'Confirm your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isConfirmPasswordVisible 
+                                    ? Icons.visibility_off 
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                });
+                              },
+                            ),
                           ),
-                          obscureText: true,
+                          obscureText: !_isConfirmPasswordVisible,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please confirm your password';

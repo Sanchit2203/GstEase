@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 import 'package:gstease/registration_screen.dart'; // To navigate to RegistrationScreen
+import 'package:gstease/main.dart'; // Import MyHomePage
 // import 'profile_screen.dart'; // No longer directly navigating here
 
 class LoginScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false; // For loading indicator
+  bool _isPasswordVisible = false; // For password visibility toggle
 
   @override
   void dispose() {
@@ -40,9 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
         print('Logged in user: ${userCredential.user?.uid}');
         if (mounted) { // Check if the widget is still in the tree
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login successful!')),
+            const SnackBar(content: Text('Login successful! Welcome to GSTEase!')),
           );
-          // AuthWrapper will automatically handle navigation after login
+          // Navigate to main page after successful login
+          Navigator.pushReplacementNamed(context, MyHomePage.id);
         }
       } on FirebaseAuthException catch (e) {
         String message;
@@ -158,12 +161,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password field
                         TextFormField(
                           controller: _passwordController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline),
                             hintText: 'Enter your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible 
+                                    ? Icons.visibility_off 
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
+                            ),
                           ),
-                          obscureText: true,
+                          obscureText: !_isPasswordVisible,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
