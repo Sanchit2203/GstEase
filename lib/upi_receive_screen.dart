@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 
 class UPIReceiveScreen extends StatefulWidget {
   const UPIReceiveScreen({super.key});
@@ -15,6 +20,7 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  final GlobalKey _qrKey = GlobalKey();
 
   String _generateReceiveQR() {
     if (_upiIdController.text.isEmpty || _nameController.text.isEmpty) {
@@ -47,6 +53,97 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
     }
   }
 
+  // Save QR code image to device gallery
+  Future<void> _saveQRImage() async {
+    try {
+      RenderRepaintBoundary boundary = _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // Get directory to save
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory != null) {
+        final fileName = 'QR_${_nameController.text.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final imagePath = '${directory.path}/$fileName';
+        
+        final imageFile = File(imagePath);
+        await imageFile.writeAsBytes(pngBytes);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('QR code saved to: $fileName'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save QR code: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Share payment details with QR code image
+  Future<void> _sharePaymentDetailsWithQR() async {
+    try {
+      RenderRepaintBoundary boundary = _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final imagePath = '${directory.path}/payment_qr_${DateTime.now().millisecondsSinceEpoch}.png';
+      
+      // Write image to file
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(pngBytes);
+
+      String shareText = '💳 Pay ${_nameController.text} via UPI\n\n';
+      shareText += '📱 UPI ID: ${_upiIdController.text}\n';
+      
+      if (_amountController.text.isNotEmpty) {
+        shareText += '💰 Amount: ₹${_amountController.text}\n';
+      }
+      
+      if (_noteController.text.isNotEmpty) {
+        shareText += '📝 Note: ${_noteController.text}\n';
+      }
+      
+      shareText += '\n🔗 UPI Link: ${_generateReceiveQR()}\n\n';
+      shareText += 'Scan the QR code in the image or click the UPI link to pay instantly!';
+
+      // Share image with text
+      await Share.shareXFiles(
+        [XFile(imagePath)],
+        text: shareText,
+        subject: 'Payment Request - ${_nameController.text}',
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to share payment details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _sharePaymentDetails() {
     if (_upiIdController.text.isEmpty || _nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,25 +155,56 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
       return;
     }
 
-    String shareText = '💳 Pay ${_nameController.text} via UPI\n\n';
-    shareText += '📱 UPI ID: ${_upiIdController.text}\n';
-    
-    if (_amountController.text.isNotEmpty) {
-      shareText += '💰 Amount: ₹${_amountController.text}\n';
+    // Call the new method that includes QR image
+    _sharePaymentDetailsWithQR();
+  }
+
+  // Capture QR code as image and share
+  Future<void> _captureAndShareQR() async {
+    try {
+      RenderRepaintBoundary boundary = _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final imagePath = '${directory.path}/qr_code_${DateTime.now().millisecondsSinceEpoch}.png';
+      
+      // Write image to file
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(pngBytes);
+
+      // Create share text
+      String shareText = '💳 Payment QR Code - ${_nameController.text}\n\n';
+      shareText += '� UPI ID: ${_upiIdController.text}\n';
+      
+      if (_amountController.text.isNotEmpty) {
+        shareText += '💰 Amount: ₹${_amountController.text}\n';
+      }
+      
+      if (_noteController.text.isNotEmpty) {
+        shareText += '📝 Note: ${_noteController.text}\n';
+      }
+      
+      shareText += '\n🔗 UPI Link: ${_generateReceiveQR()}\n\n';
+      shareText += 'Scan the QR code above or click the UPI link to pay instantly!';
+
+      // Share image with text
+      await Share.shareXFiles(
+        [XFile(imagePath)],
+        text: shareText,
+        subject: 'Payment QR Code - ${_nameController.text}',
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to share QR code: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    
-    if (_noteController.text.isNotEmpty) {
-      shareText += '📝 Note: ${_noteController.text}\n';
-    }
-    
-    shareText += '\n🔗 UPI Link: ${_generateReceiveQR()}\n\n';
-    shareText += 'Scan the QR code or click the UPI link to pay instantly!';
-    
-    // Use share_plus to let user choose sharing app
-    Share.share(
-      shareText,
-      subject: 'Payment Request - ${_nameController.text}',
-    );
   }
 
   void _shareQRCodeOnly() {
@@ -90,15 +218,8 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
       return;
     }
 
-    final upiLink = _generateReceiveQR();
-    String shareText = '💳 Payment QR Code - ${_nameController.text}\n\n';
-    shareText += '🔗 UPI Link: $upiLink\n\n';
-    shareText += 'Click the link or scan the QR code to pay!';
-    
-    Share.share(
-      shareText,
-      subject: 'Payment QR Code - ${_nameController.text}',
-    );
+    // Call the new capture and share method
+    _captureAndShareQR();
   }
 
   @override
@@ -181,27 +302,67 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: QrImageView(
-                          data: _generateReceiveQR(),
-                          version: QrVersions.auto,
-                          size: 200.0,
-                          backgroundColor: Colors.white,
+                      GestureDetector(
+                        onLongPress: _saveQRImage,
+                        child: RepaintBoundary(
+                          key: _qrKey,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              children: [
+                                QrImageView(
+                                  data: _generateReceiveQR(),
+                                  version: QrVersions.auto,
+                                  size: 200.0,
+                                  backgroundColor: Colors.white,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _nameController.text,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (_amountController.text.isNotEmpty)
+                                  Text(
+                                    '₹${_amountController.text}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'Share this QR code for others to pay you',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                      Column(
+                        children: [
+                          Text(
+                            'Share this QR code for others to pay you',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Long press QR code to save image',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       if (_amountController.text.isNotEmpty)
@@ -240,7 +401,7 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                             child: ElevatedButton.icon(
                               onPressed: _shareQRCodeOnly,
                               icon: const Icon(Icons.qr_code),
-                              label: const Text('Share QR'),
+                              label: const Text('Share QR Image'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
@@ -253,7 +414,7 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                             child: ElevatedButton.icon(
                               onPressed: _sharePaymentDetails,
                               icon: const Icon(Icons.share),
-                              label: const Text('Share All'),
+                              label: const Text('Share Details + QR'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
