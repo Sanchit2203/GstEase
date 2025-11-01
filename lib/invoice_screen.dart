@@ -77,10 +77,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
     
     for (var item in _invoiceItems) {
       if (item.isValid()) {
-        double itemTotal = item.quantity * item.rate;
-        double gst = (itemTotal * item.gstRate) / 100;
-        subtotal += itemTotal;
-        totalGst += gst;
+        subtotal += item.actualBaseAmount;
+        totalGst += item.actualGstAmount;
       }
     }
     
@@ -1017,21 +1015,98 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
             ],
           ),
           
+          // GST Inclusion Switch
+          if (item.gstRate > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.amber.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.includeGst 
+                        ? 'Rate includes GST (GST will be extracted from rate)'
+                        : 'Rate excludes GST (GST will be added to rate)',
+                      style: TextStyle(
+                        color: Colors.amber.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: item.includeGst,
+                    onChanged: (value) {
+                      setState(() {
+                        item.includeGst = value;
+                        _calculateTotals();
+                      });
+                    },
+                    activeColor: Colors.green,
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           if (item.isValid()) ...[
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  const Text('Item Total:'),
-                  Text(
-                    '₹ ${((item.quantity * item.rate) + ((item.quantity * item.rate * item.gstRate) / 100)).toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Base Amount:'),
+                      Text(
+                        '₹ ${item.actualBaseAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  if (item.gstRate > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('GST (${item.gstRate.toStringAsFixed(0)}%):'),
+                        Text(
+                          '₹ ${item.actualGstAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 12),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Item Total:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '₹ ${item.totalAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1298,8 +1373,44 @@ class InvoiceItem {
   double quantity = 0.0;
   double rate = 0.0;
   double gstRate = 0.0;
+  bool includeGst = false; // New field for GST inclusion
   
   bool isValid() {
     return description.isNotEmpty && quantity > 0 && rate > 0;
+  }
+  
+  // Get the base amount without GST
+  double get baseAmount => quantity * rate;
+  
+  // Get the GST amount
+  double get gstAmount => includeGst ? 0.0 : (baseAmount * gstRate) / 100;
+  
+  // Get the total amount (rate is inclusive or exclusive based on includeGst)
+  double get totalAmount {
+    if (includeGst) {
+      // Rate includes GST, so total is the entered rate
+      return baseAmount;
+    } else {
+      // Rate is exclusive of GST, add GST to it
+      return baseAmount + gstAmount;
+    }
+  }
+  
+  // Get the actual base amount for calculations
+  double get actualBaseAmount {
+    if (includeGst) {
+      return baseAmount / (1 + (gstRate / 100));
+    } else {
+      return baseAmount;
+    }
+  }
+  
+  // Get the actual GST amount for calculations
+  double get actualGstAmount {
+    if (includeGst) {
+      return baseAmount - actualBaseAmount;
+    } else {
+      return gstAmount;
+    }
   }
 }
