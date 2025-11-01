@@ -196,11 +196,10 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 16),
             Row(
               children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.45,
+                Expanded(
                   child: _buildDashboardCard(
                     context,
-                    title: 'Reports & Analytics',
+                    title: 'Analytics',
                     subtitle: 'View transactions & analytics',
                     icon: Icons.analytics,
                     colors: [const Color(0xFF1565C0), const Color(0xFF2196F3)],
@@ -208,6 +207,25 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const ReportsScreen()),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildDashboardCard(
+                    context,
+                    title: 'Security',
+                    subtitle: 'Security settings & authentication',
+                    icon: Icons.security,
+                    colors: [const Color(0xFFD32F2F), const Color(0xFFEF5350)],
+                    onTap: () {
+                      // Navigate to security screen (to be implemented)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Security settings coming soon!'),
+                          duration: Duration(seconds: 2),
+                        ),
                       );
                     },
                   ),
