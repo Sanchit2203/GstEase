@@ -215,8 +215,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 Expanded(
                   child: _buildDashboardCard(
                     context,
-                    title: 'Security',
-                    subtitle: 'Security settings & authentication',
+                    title: 'Security & Report',
+                    subtitle: 'Report Suspicious UPI IDs',
                     icon: Icons.security,
                     colors: [const Color(0xFFD32F2F), const Color(0xFFEF5350)],
                     onTap: () {
