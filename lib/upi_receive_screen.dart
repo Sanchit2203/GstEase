@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
+import 'services/upi_handle_service.dart';
 
 class UPIReceiveScreen extends StatefulWidget {
   const UPIReceiveScreen({super.key});
@@ -21,6 +22,27 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   final GlobalKey _qrKey = GlobalKey();
+  
+  String _currentUPIType = '';
+
+  Future<void> _checkUPIType(String upiId) async {
+    if (upiId.contains('@') && upiId.length > 3) {
+      try {
+        String upiType = await UPIHandleService.checkUPIType(upiId);
+        setState(() {
+          _currentUPIType = upiType;
+        });
+      } catch (e) {
+        setState(() {
+          _currentUPIType = '';
+        });
+      }
+    } else {
+      setState(() {
+        _currentUPIType = '';
+      });
+    }
+  }
 
   String _generateReceiveQR() {
     if (_upiIdController.text.isEmpty || _nameController.text.isEmpty) {
@@ -116,6 +138,12 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
       String shareText = '💳 Pay ${_nameController.text} via UPI\n\n';
       shareText += '📱 UPI ID: ${_upiIdController.text}\n';
       
+      // Add UPI type warning to shared content
+      String warningMessage = _getUPIWarningMessage();
+      if (warningMessage.isNotEmpty) {
+        shareText += '\n⚠️ WARNING: $warningMessage\n';
+      }
+      
       if (_amountController.text.isNotEmpty) {
         shareText += '💰 Amount: ₹${_amountController.text}\n';
       }
@@ -177,7 +205,13 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
 
       // Create share text
       String shareText = '💳 Payment QR Code - ${_nameController.text}\n\n';
-      shareText += '� UPI ID: ${_upiIdController.text}\n';
+      shareText += '📱 UPI ID: ${_upiIdController.text}\n';
+      
+      // Add UPI type warning to shared content
+      String warningMessage = _getUPIWarningMessage();
+      if (warningMessage.isNotEmpty) {
+        shareText += '\n⚠️ WARNING: $warningMessage\n';
+      }
       
       if (_amountController.text.isNotEmpty) {
         shareText += '💰 Amount: ₹${_amountController.text}\n';
@@ -222,6 +256,70 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
     _captureAndShareQR();
   }
 
+  String _getUPIWarningMessage() {
+    switch (_currentUPIType.toLowerCase()) {
+      case 'wallet':
+        return 'Wallet detected might be fraud';
+      case 'unknown':
+        return 'Unverified or new handle';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildUPITypeWarning() {
+    String warningText = '';
+    Color warningColor = Colors.transparent;
+    IconData warningIcon = Icons.info_outline;
+
+    switch (_currentUPIType.toLowerCase()) {
+      case 'wallet':
+        warningText = 'Wallet detected might be fraud';
+        warningColor = Colors.red;
+        warningIcon = Icons.warning;
+        break;
+      case 'unknown':
+        warningText = 'Unverified or new handle';
+        warningColor = Colors.orange;
+        warningIcon = Icons.help_outline;
+        break;
+      case 'bank':
+        return const SizedBox.shrink(); // No warning for bank UPIs
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: warningColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: warningColor, width: 2),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            warningIcon,
+            color: warningColor,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              warningText,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: warningColor,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -253,7 +351,10 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                         hintText: 'yourname@upi',
                         prefixIcon: Icon(Icons.alternate_email),
                       ),
-                      onChanged: (value) => setState(() {}),
+                      onChanged: (value) {
+                        setState(() {});
+                        _checkUPIType(value);
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -338,11 +439,63 @@ class _UPIReceiveScreenState extends State<UPIReceiveScreen> {
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
+                                
+                                // Add warning below QR in the image
+                                if (_getUPIWarningMessage().isNotEmpty)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _currentUPIType.toLowerCase() == 'wallet' 
+                                        ? Colors.red.withOpacity(0.1)
+                                        : Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: _currentUPIType.toLowerCase() == 'wallet' 
+                                          ? Colors.red 
+                                          : Colors.orange,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _currentUPIType.toLowerCase() == 'wallet' 
+                                            ? Icons.warning
+                                            : Icons.info_outline,
+                                          size: 14,
+                                          color: _currentUPIType.toLowerCase() == 'wallet' 
+                                            ? Colors.red 
+                                            : Colors.orange,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _getUPIWarningMessage(),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: _currentUPIType.toLowerCase() == 'wallet' 
+                                              ? Colors.red 
+                                              : Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                         ),
                       ),
+                      
+                      // Warning widget based on UPI type
+                      if (_currentUPIType.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: _buildUPITypeWarning(),
+                        ),
+                      
                       const SizedBox(height: 16),
                       Column(
                         children: [
