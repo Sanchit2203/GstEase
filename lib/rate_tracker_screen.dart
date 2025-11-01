@@ -275,7 +275,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   // Generate GST-related descriptions
   String _generateGSTDescription(int id) {
     final descriptions = [
-      'Textile GST rate reduced from 12% to 5% effective immediately for readymade garments',
+      'Textile GST rate reduced from 18% to 5% effective immediately for readymade garments',
       'New HSN codes introduced for electric vehicles and renewable energy equipment',
       'Updated GSTR-1 filing requirements for businesses with turnover above 5 crores',
       'E-commerce platforms now required to collect GST at source for marketplace transactions',
@@ -328,7 +328,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       {
         'id': '1',
         'title': 'GST Rate Revision for Textiles',
-        'description': 'Textile GST rate reduced from 12% to 5% effective immediately for readymade garments and fabrics',
+        'description': 'Textile GST rate reduced from 18% to 5% effective immediately for readymade garments and fabrics',
         'date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
         'type': 'rate_change',
         'category': 'Textiles',
@@ -683,7 +683,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
             children: [
               Expanded(child: _buildStatCard('Exempt Items', '1', Icons.free_breakfast, Colors.green)),
               const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Luxury Tax', '28%', Icons.diamond, Colors.red)),
+              Expanded(child: _buildStatCard('Luxury Tax', '40%', Icons.diamond, Colors.red)),
             ],
           ),
           const SizedBox(height: 32),
@@ -715,11 +715,11 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   const SizedBox(height: 12),
                   _buildRateDistributionBar('5%', 1, Colors.blue, 8),
                   const SizedBox(height: 12),
-                  _buildRateDistributionBar('12%', 3, Colors.orange, 8),
+                  _buildRateDistributionBar('18%', 3, Colors.orange, 8),
                   const SizedBox(height: 12),
                   _buildRateDistributionBar('18%', 2, Colors.purple, 8),
                   const SizedBox(height: 12),
-                  _buildRateDistributionBar('28%', 1, Colors.red, 8),
+                  _buildRateDistributionBar('40%', 1, Colors.red, 8),
                 ],
               ),
             ),
@@ -749,11 +749,11 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   ),
                   const SizedBox(height: 20),
                   
-                  _buildChangeItem('Textiles', '12% → 5%', 'Reduced', Colors.green),
+                  _buildChangeItem('Textiles', '18% → 5%', 'Reduced', Colors.green),
                   const SizedBox(height: 12),
-                  _buildChangeItem('Electronics', '18% → 12%', 'Reduced', Colors.green),
+                  _buildChangeItem('Electronics', '40% → 18%', 'Reduced', Colors.green),
                   const SizedBox(height: 12),
-                  _buildChangeItem('Luxury Cars', '28% → 31%', 'Increased', Colors.red),
+                  _buildChangeItem('Luxury Cars', '40% → 45%', 'Increased', Colors.red),
                 ],
               ),
             ),

@@ -34,7 +34,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen> {
   double _igst = 0.0;
 
   // MODIFIED: Added 0 to the list
-  final List<double> _quickGstRates = [0, 5, 12, 18, 28];
+  final List<double> _quickGstRates = [0, 5, 18, 40];
 
   @override
   void dispose() {

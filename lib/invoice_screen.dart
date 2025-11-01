@@ -1000,7 +1000,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> with TickerProviderStateM
                     labelText: 'GST %',
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: [0, 5, 12, 18, 28].map((rate) {
+                  items: [0, 5, 18, 40].map((rate) {
                     return DropdownMenuItem(
                       value: rate.toDouble(),
                       child: Text('$rate%'),
