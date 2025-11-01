@@ -25,7 +25,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     GSTRateItem('Processed Foods', 'Biscuits, Namkeen, Sweets', 12, Colors.orange),
     GSTRateItem('Consumer Goods', 'Soaps, Toothpaste, Shampoo', 18, Colors.purple),
     GSTRateItem('Electronics', 'Mobile Phones, Laptops, TV', 18, Colors.indigo),
-    GSTRateItem('Luxury Items', 'Cars, Cigarettes, Aerated Drinks', 28, Colors.red),
+    GSTRateItem('Luxury Items', 'Cars, Cigarettes, Aerated Drinks', 40, Colors.red),
     GSTRateItem('Textiles', 'Fabrics, Readymade Garments', 12, Colors.teal),
     GSTRateItem('Medicines', 'Life Saving Drugs, Formulations', 12, Colors.cyan),
   ];
@@ -724,40 +724,6 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          
-          // Recent Changes
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.update, color: Colors.orange.shade600),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Recent Rate Changes',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  _buildChangeItem('Textiles', '18% → 5%', 'Reduced', Colors.green),
-                  const SizedBox(height: 12),
-                  _buildChangeItem('Electronics', '40% → 18%', 'Reduced', Colors.green),
-                  const SizedBox(height: 12),
-                  _buildChangeItem('Luxury Cars', '40% → 45%', 'Increased', Colors.red),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -861,59 +827,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     );
   }
   
-  Widget _buildChangeItem(String item, String change, String type, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            type == 'Reduced' ? Icons.trending_down : Icons.trending_up,
-            color: color,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  change,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              type,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
   
   Widget _buildUpdatesTab() {
     return RefreshIndicator(
