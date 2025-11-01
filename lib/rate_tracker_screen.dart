@@ -715,7 +715,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   const SizedBox(height: 12),
                   _buildRateDistributionBar('5%', 1, Colors.blue, 8),
                   const SizedBox(height: 12),
-                  _buildRateDistributionBar('18%', 3, Colors.orange, 8),
+                  _buildRateDistributionBar('12%', 3, Colors.orange, 8),
                   const SizedBox(height: 12),
                   _buildRateDistributionBar('18%', 2, Colors.purple, 8),
                   const SizedBox(height: 12),
