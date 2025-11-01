@@ -119,6 +119,8 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
     Color iconColor;
     String title;
     String message;
+    String alertMessage = '';
+    Color alertColor = Colors.transparent;
 
     switch (upiType.toLowerCase()) {
       case 'bank':
@@ -128,16 +130,20 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
         message = 'This UPI ID is registered with a Bank account. The payment will be processed through your bank.';
         break;
       case 'wallet':
-        icon = Icons.account_balance_wallet;
-        iconColor = Colors.green;
-        title = 'Wallet UPI';
+        icon = Icons.warning;
+        iconColor = Colors.red;
+        title = 'Wallet UPI Detected';
         message = 'This UPI ID is registered with a Digital Wallet. The payment will be processed through the wallet service.';
+        alertMessage = 'Wallet detected might be fraud';
+        alertColor = Colors.red;
         break;
       default:
         icon = Icons.help_outline;
         iconColor = Colors.orange;
-        title = 'Unknown UPI Type';
-        message = 'Unable to determine the UPI type. The payment will still proceed normally.';
+        title = 'Unverified UPI';
+        message = 'Unable to determine the UPI type from our database. This might be a new or unverified handle.';
+        alertMessage = 'Unverified or new handle';
+        alertColor = Colors.orange;
     }
 
     return showDialog(
@@ -157,6 +163,40 @@ class _UPIPaymentScreenState extends State<UPIPaymentScreen> {
           children: [
             Text(message),
             const SizedBox(height: 16),
+            
+            // Alert message for wallet fraud or unverified handles
+            if (alertMessage.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: alertColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: alertColor, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      upiType.toLowerCase() == 'wallet' ? Icons.warning : Icons.info_outline,
+                      color: alertColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        alertMessage,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: alertColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
