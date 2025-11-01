@@ -1,0 +1,43 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "reported_upi_ids",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "report_count",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "last_reported_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "reported_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION_GROUP", 
+      "fields": [
+        {
+          "fieldPath": "reporter_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "reported_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

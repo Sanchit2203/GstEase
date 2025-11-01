@@ -13,6 +13,7 @@ import 'package:gstease/upi_payment_screen.dart'; // Import UPI Payment Screen
 
 import 'package:gstease/upi_receive_screen.dart'; // Import UPI Receive Screen
 import 'package:gstease/reports_screen.dart'; // Import Reports Screen
+import 'package:gstease/upi_fraud_report_screen.dart'; // Import UPI Fraud Report Screen
 
 
 void main() async { // Make main async
@@ -220,12 +221,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     icon: Icons.security,
                     colors: [const Color(0xFFD32F2F), const Color(0xFFEF5350)],
                     onTap: () {
-                      // Navigate to security screen (to be implemented)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Security settings coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UPIFraudReportScreen()),
                       );
                     },
                   ),

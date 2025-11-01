@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // UPI Fraud Reports - Community safety feature
+    match /reported_upi_ids/{upiId} {
+      // Anyone authenticated can read reported UPI IDs (for checking before transactions)
+      allow read: if request.auth != null;
+      
+      // Only authenticated users can create reports
+      allow create: if request.auth != null 
+        && request.auth.uid != null
+        && validateReportData();
+      
+      // Only allow updating report_count, last_reported_at, and reporters array
+      allow update: if request.auth != null 
+        && request.auth.uid != null
+        && onlyAllowedFieldsUpdated()
+        && validateReportUpdate();
+      
+      // No deletion allowed for community safety
+      allow delete: if false;
+      
+      // Individual report details - subcollection
+      match /reports/{reportId} {
+        // Users can read all individual reports (for transparency)
+        allow read: if request.auth != null;
+        
+        // Only authenticated users can create reports
+        allow create: if request.auth != null 
+          && request.auth.uid != null
+          && validateIndividualReport();
+        
+        // Users can only update their own reports within 24 hours
+        allow update: if request.auth != null 
+          && request.auth.uid == resource.data.reporter_uid
+          && request.time < resource.data.reported_at + duration.value(1, 'd')
+          && validateIndividualReportUpdate();
+        
+        // No deletion allowed for audit trail
+        allow delete: if false;
+      }
+    }
+    
+    // Payment history and other collections
+    match /payment_history/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /transactions/{transactionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // GST calculations and invoices
+    match /gst_calculations/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /calculations/{calculationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    match /invoices/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /user_invoices/{invoiceId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Helper functions for UPI fraud report validation
+    function validateReportData() {
+      let requiredFields = ['upi_id', 'report_count', 'first_reported_at', 'last_reported_at', 'reporters', 'status'];
+      return request.resource.data.keys().hasAll(requiredFields)
+        && request.resource.data.upi_id is string
+        && request.resource.data.upi_id.size() > 0
+        && request.resource.data.report_count == 1
+        && request.resource.data.reporters.size() == 1
+        && request.resource.data.reporters[0] == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.first_reported_at is timestamp
+        && request.resource.data.last_reported_at is timestamp;
+    }
+    
+    function onlyAllowedFieldsUpdated() {
+      let allowedFields = ['report_count', 'last_reported_at', 'reporters'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
+    }
+    
+    function validateReportUpdate() {
+      return request.resource.data.report_count == resource.data.report_count + 1
+        && request.resource.data.last_reported_at is timestamp
+        && request.resource.data.reporters.hasAll(resource.data.reporters)
+        && request.resource.data.reporters.size() == resource.data.reporters.size() + 1
+        && request.resource.data.reporters.hasAny([request.auth.uid])
+        && !(resource.data.reporters.hasAny([request.auth.uid])); // Prevent duplicate reports from same user
+    }
+    
+    function validateIndividualReport() {
+      let requiredFields = ['reporter_uid', 'reporter_email', 'reason', 'description', 'reported_at'];
+      return request.resource.data.keys().hasAll(requiredFields)
+        && request.resource.data.reporter_uid == request.auth.uid
+        && request.resource.data.reporter_email == request.auth.token.email
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10
+        && request.resource.data.reported_at is timestamp;
+    }
+    
+    function validateIndividualReportUpdate() {
+      let allowedFields = ['reason', 'description'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields)
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10;
+    }
+    
+    // Default deny rule for all other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
