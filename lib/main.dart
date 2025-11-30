@@ -16,11 +16,16 @@ import 'package:gstease/reports_screen.dart'; // Import Reports Screen
 import 'package:gstease/upi_fraud_report_screen.dart'; // Import UPI Fraud Report Screen
 
 
-void main() async { // Make main async
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Use options from firebase_options.dart
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
   runApp(const MyApp());
 }
 
@@ -409,9 +414,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Colors.transparent,
         foregroundColor: Theme.of(context).colorScheme.onBackground,
       ),
-      body: Center(
-        child: widgetOptions.elementAt(_selectedIndex),
-      ),
+      body: widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
