@@ -14,6 +14,7 @@ import 'package:gstease/upi_payment_screen.dart'; // Import UPI Payment Screen
 import 'package:gstease/upi_receive_screen.dart'; // Import UPI Receive Screen
 import 'package:gstease/reports_screen.dart'; // Import Reports Screen
 import 'package:gstease/upi_fraud_report_screen.dart'; // Import UPI Fraud Report Screen
+import 'package:gstease/manager_screen.dart'; // Import Manager Screen
 
 
 void main() async {
@@ -297,6 +298,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const RateTrackerScreen()),
+                    );
+                  },
+                ),
+                _buildDashboardCard(
+                  context,
+                  title: 'Manager',
+                  subtitle: 'Manage operations',
+                  icon: Icons.settings,
+                  colors: [const Color(0xFF1565C0), const Color(0xFF5C6BC0)],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ManagerScreen()),
                     );
                   },
                 ),
