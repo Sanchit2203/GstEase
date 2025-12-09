@@ -114,19 +114,19 @@ class _UPIFraudReportScreenState extends State<UPIFraudReportScreen> {
                 if (reportCount > 0) ...[
                   const SizedBox(height: 8),
                   Text(
-                    reportCount > 10
+                    reportCount >= 10
                         ? '🚨 CRITICAL RISK - Avoid this UPI ID!'
-                        : reportCount > 5 
+                        : reportCount >= 5 
                             ? '⚠️ HIGH RISK - Multiple reports received'
-                            : reportCount > 2
+                            : reportCount >= 3
                                 ? '⚡ MEDIUM RISK - Some reports received'
                                 : '⚠️ LOW RISK - Few reports received',
                     style: TextStyle(
-                      color: reportCount > 10
+                      color: reportCount >= 10
                           ? Colors.red.shade900
-                          : reportCount > 5 
+                          : reportCount >= 5 
                               ? Colors.red 
-                              : reportCount > 2 
+                              : reportCount >=3 
                                   ? Colors.orange 
                                   : Colors.yellow.shade700,
                       fontWeight: FontWeight.bold,
