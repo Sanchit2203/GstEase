@@ -70,68 +70,38 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       
       Map<String, List<Map<String, dynamic>>> ratesMap = {};
       
-      // Known subcollection names based on your Firebase structure
-      // Add more as needed
-      final List<String> knownCategories = [
-        'Bangles of Lac_Shellac',
-        'Earthen Pots & Clay Lamps',
-        'Glass Bangle',
-        'Food Items',
-        'Essential Goods',
-        'Grains',
-        'Milk & Dairy',
-        'Fruits & Vegetables',
-        'Books & Newspapers',
-        'Medical Supplies',
-        'Handicrafts',
-        'Textiles',
-        'Agricultural Products',
-        'Education Materials',
-        'Healthcare Products',
-        'Transport Services',
-        'Hotel Services',
-        'Restaurant Services',
-        'Construction Materials',
-        'Machinery',
-        'Electronics',
-        'Automobiles',
-        'Luxury Items',
-        'Tobacco Products',
-        'Aerated Drinks',
-        'Consumer Goods',
-        'Industrial Goods',
-        'Raw Materials',
-        'Petroleum Products',
-        'Precious Metals',
-      ];
-      
       for (var rateDoc in snapshot.docs) {
         final rate = rateDoc.id; // e.g., "0%", "5%", "12%"
         final rateData = rateDoc.data() as Map<String, dynamic>;
         
         print('\n--- Processing rate document: $rate ---');
-        print('Document data keys: ${rateData.keys.toList()}');
+        print('Document data: $rateData');
         
         // Initialize rate if not exists
         if (!ratesMap.containsKey(rate)) {
           ratesMap[rate] = [];
         }
         
-        // Try to get categories from document field, fallback to known list
-        List<dynamic> categories;
+        // Get categories from the "categories" field in the rate document
+        // This field should be an array listing subcollection names
+        List<dynamic> categories = [];
+        
         if (rateData.containsKey('categories') && rateData['categories'] is List) {
           categories = rateData['categories'] as List<dynamic>;
-          print('Using "categories" field: $categories');
+          print('✓ Found "categories" field with ${categories.length} items: $categories');
         } else {
-          categories = knownCategories;
-          print('No "categories" field found, trying all known categories');
+          print('⚠ No "categories" field found in $rate document');
+          print('⚠ Add a "categories" array field to this document in Firebase Console');
+          print('⚠ Example: categories: ["Earthen Pots & Clay Lamps", "Bangles of Lac_Shellac"]');
+          continue; // Skip this rate if no categories defined
         }
         
-        print('Checking ${categories.length} categories');
+        print('Fetching items from ${categories.length} categories');
         
         // Fetch items from each subcollection
         for (var category in categories) {
           final categoryName = category.toString();
+          print('  → Querying subcollection: "$categoryName"');
           
           try {
             // Query the subcollection
@@ -142,13 +112,13 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
             
             final itemsSnapshot = await subcollectionRef.get();
             
-            // Only log and process if subcollection has items
             if (itemsSnapshot.docs.isNotEmpty) {
               print('  ✓ Found ${itemsSnapshot.docs.length} items in "$categoryName"');
               
               // Process each item document
               for (var itemDoc in itemsSnapshot.docs) {
                 final itemData = itemDoc.data();
+                print('    - ${itemData['product_category']} (HSN: ${itemData['hsn_code']})');
                 
                 ratesMap[rate]!.add({
                   'id': itemDoc.id,
@@ -159,10 +129,11 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   'effectiveDate': itemData['effective_date']?.toString() ?? '',
                 });
               }
+            } else {
+              print('  ⚠ Subcollection "$categoryName" is empty');
             }
           } catch (e) {
-            // Silently skip non-existent subcollections
-            continue;
+            print('  ✗ Error fetching "$categoryName": $e');
           }
         }
         
