@@ -31,20 +31,26 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   }
 
   // Fetch GST Rates from Firebase Firestore
+  // Structure: GST Rates/{rate}/{subcollection}/{item}
+  // Example: GST Rates/0%/Bangles of Lac_Shellac/{itemId}
   Future<void> _fetchGSTRatesFromFirebase() async {
     setState(() {
       _isLoadingRates = true;
     });
 
     try {
-      print('Fetching GST rates from Firestore...');
+      print('=== STARTING GST RATES FETCH ===');
+      print('User authenticated: ${_firestore.app.name}');
+      
       // Fetch from "GST Rates" collection
+      print('Querying collection: "GST Rates"');
       final QuerySnapshot snapshot = await _firestore.collection('GST Rates').get();
       
-      print('Found ${snapshot.docs.length} rate categories');
+      print('Query completed. Found ${snapshot.docs.length} rate documents');
       
       if (snapshot.docs.isEmpty) {
-        print('No documents in GST Rates collection. Please add data to Firebase.');
+        print('WARNING: No documents found in "GST Rates" collection');
+        
         setState(() {
           _gstRatesData = {};
           _isLoadingRates = false;
@@ -53,7 +59,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No GST rates found. Please add data to Firebase Firestore collection "GST Rates".'),
+              content: Text('No GST rates found in Firebase'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 5),
             ),
@@ -64,34 +70,103 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       
       Map<String, List<Map<String, dynamic>>> ratesMap = {};
       
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final String rate = data['rate'] ?? doc.id;
+      // Known subcollection names based on your Firebase structure
+      // Add more as needed
+      final List<String> knownCategories = [
+        'Bangles of Lac_Shellac',
+        'Earthen Pots & Clay Lamps',
+        'Glass Bangle',
+        'Food Items',
+        'Essential Goods',
+        'Grains',
+        'Milk & Dairy',
+        'Fruits & Vegetables',
+        'Books & Newspapers',
+        'Medical Supplies',
+        'Handicrafts',
+        'Textiles',
+        'Agricultural Products',
+        'Education Materials',
+        'Healthcare Products',
+        'Transport Services',
+        'Hotel Services',
+        'Restaurant Services',
+        'Construction Materials',
+        'Machinery',
+        'Electronics',
+        'Automobiles',
+        'Luxury Items',
+        'Tobacco Products',
+        'Aerated Drinks',
+        'Consumer Goods',
+        'Industrial Goods',
+        'Raw Materials',
+        'Petroleum Products',
+        'Precious Metals',
+      ];
+      
+      for (var rateDoc in snapshot.docs) {
+        final rate = rateDoc.id; // e.g., "0%", "5%", "12%"
+        final rateData = rateDoc.data() as Map<String, dynamic>;
         
-        print('Processing rate: $rate (doc id: ${doc.id})');
+        print('\n--- Processing rate document: $rate ---');
+        print('Document data keys: ${rateData.keys.toList()}');
         
-        // Get items subcollection for this rate
-        final itemsSnapshot = await _firestore
-            .collection('GST Rates')
-            .doc(doc.id)
-            .collection('items')
-            .get();
-        
-        print('Found ${itemsSnapshot.docs.length} items for rate $rate');
-        
-        List<Map<String, dynamic>> items = [];
-        for (var itemDoc in itemsSnapshot.docs) {
-          final itemData = itemDoc.data();
-          items.add({
-            'id': itemDoc.id,
-            'name': itemData['name'] ?? itemDoc.id,
-            'hsnCode': itemData['hsnCode'] ?? '',
-            'remark': itemData['remark'] ?? '',
-            'effectiveDate': itemData['effectiveDate'] ?? '',
-          });
+        // Initialize rate if not exists
+        if (!ratesMap.containsKey(rate)) {
+          ratesMap[rate] = [];
         }
         
-        ratesMap[rate] = items;
+        // Try to get categories from document field, fallback to known list
+        List<dynamic> categories;
+        if (rateData.containsKey('categories') && rateData['categories'] is List) {
+          categories = rateData['categories'] as List<dynamic>;
+          print('Using "categories" field: $categories');
+        } else {
+          categories = knownCategories;
+          print('No "categories" field found, trying all known categories');
+        }
+        
+        print('Checking ${categories.length} categories');
+        
+        // Fetch items from each subcollection
+        for (var category in categories) {
+          final categoryName = category.toString();
+          
+          try {
+            // Query the subcollection
+            final subcollectionRef = _firestore
+                .collection('GST Rates')
+                .doc(rate)
+                .collection(categoryName);
+            
+            final itemsSnapshot = await subcollectionRef.get();
+            
+            // Only log and process if subcollection has items
+            if (itemsSnapshot.docs.isNotEmpty) {
+              print('  ✓ Found ${itemsSnapshot.docs.length} items in "$categoryName"');
+              
+              // Process each item document
+              for (var itemDoc in itemsSnapshot.docs) {
+                final itemData = itemDoc.data();
+                
+                ratesMap[rate]!.add({
+                  'id': itemDoc.id,
+                  'category': categoryName,
+                  'name': itemData['product_category']?.toString() ?? categoryName,
+                  'hsnCode': itemData['hsn_code']?.toString() ?? '',
+                  'remark': itemData['remarks']?.toString() ?? '',
+                  'effectiveDate': itemData['effective_date']?.toString() ?? '',
+                });
+              }
+            }
+          } catch (e) {
+            // Silently skip non-existent subcollections
+            continue;
+          }
+        }
+        
+        print('Total items loaded for $rate: ${ratesMap[rate]!.length}');
       }
       
       setState(() {
@@ -99,19 +174,27 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
         _isLoadingRates = false;
       });
       
-      print('Successfully loaded ${ratesMap.length} rate categories');
+      print('\n=== FETCH COMPLETE ===');
+      print('Loaded ${ratesMap.length} rate categories');
+      print('Total items across all rates: ${ratesMap.values.fold(0, (sum, items) => sum + items.length)}');
+      ratesMap.forEach((rate, items) {
+        print('  $rate: ${items.length} items');
+      });
       
       if (mounted) {
+        final totalItems = ratesMap.values.fold(0, (sum, items) => sum + items.length);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Loaded ${ratesMap.length} GST rate categories'),
+            content: Text('✅ Loaded ${ratesMap.length} rates, $totalItems items'),
             backgroundColor: Colors.green,
           ),
         );
       }
-    } catch (e) {
-      print('Error fetching GST rates: $e');
-      print('Stack trace: ${StackTrace.current}');
+    } catch (e, stackTrace) {
+      print('\n=== ERROR FETCHING GST RATES ===');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      
       setState(() {
         _isLoadingRates = false;
       });
@@ -119,8 +202,9 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading GST rates: $e'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -619,6 +703,11 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
               style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
             const SizedBox(height: 8),
+            Text(
+              'Check debug console for error messages',
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _fetchGSTRatesFromFirebase,
               icon: const Icon(Icons.refresh),
@@ -637,37 +726,53 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     });
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: sortedRates.length,
       itemBuilder: (context, index) {
         final rate = sortedRates[index];
         final items = _gstRatesData[rate] ?? [];
         final color = _getColorForRate(rate);
         
-        return _buildRateCard(rate, items, color);
+        return _buildSimpleRateSection(rate, items, color);
       },
     );
   }
   
-  Widget _buildRateCard(String rate, List<Map<String, dynamic>> items, Color color) {
+  Widget _buildSimpleRateSection(String rate, List<Map<String, dynamic>> items, Color color) {
+    // Group items by category
+    Map<String, List<Map<String, dynamic>>> groupedItems = {};
+    for (var item in items) {
+      final category = item['category'] ?? 'Uncategorized';
+      if (!groupedItems.containsKey(category)) {
+        groupedItems[category] = [];
+      }
+      groupedItems[category]!.add(item);
+    }
+    
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
         child: ExpansionTile(
           leading: Container(
-            width: 50,
-            height: 50,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [color, color.withOpacity(0.7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: color.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -676,86 +781,207 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                 rate,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
           title: Text(
-            'GST Rate: $rate',
+            'GST Rate $rate',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: color,
               fontSize: 16,
+              color: color,
             ),
           ),
           subtitle: Text(
-            '${items.length} item${items.length != 1 ? 's' : ''}',
+            '${groupedItems.length} categories • ${items.length} items',
             style: TextStyle(
+              fontSize: 13,
               color: Colors.grey.shade600,
-              fontSize: 14,
             ),
           ),
-          children: items.isEmpty 
+          children: items.isEmpty
               ? [
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Center(
-                      child: Text(
-                        'No items in this category',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No items found for this rate',
+                      style: TextStyle(color: Colors.grey.shade600),
                     ),
                   )
                 ]
-              : items.map((item) => _buildItemTile(item, color)).toList(),
+              : groupedItems.entries.map((entry) {
+                  return _buildDropdownCategory(entry.key, entry.value, color);
+                }).toList(),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDropdownCategory(String categoryName, List<Map<String, dynamic>> items, Color color) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(10),
+        color: color.withOpacity(0.05),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          leading: Icon(Icons.folder_open, color: color, size: 22),
+          title: Text(
+            categoryName,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${items.length}',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.keyboard_arrow_down, color: color),
+            ],
+          ),
+          children: items.map((item) => _buildDropdownItem(item, color)).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildItemTile(Map<String, dynamic> item, Color color) {
+  Widget _buildDropdownItem(Map<String, dynamic> item, Color color) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
+        color: Colors.white,
         border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: ExpansionTile(
-        leading: Icon(Icons.receipt, color: color, size: 20),
-        title: Text(
-          item['name'] ?? 'Unknown Item',
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        subtitle: item['hsnCode']?.isNotEmpty == true
-            ? Text(
-                'HSN: ${item['hsnCode']}',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
-              )
-            : null,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                _buildDetailRow('HSN Code', item['hsnCode'] ?? 'N/A', Icons.qr_code_2, color),
-                const SizedBox(height: 12),
-                _buildDetailRow('Remark', item['remark'] ?? 'N/A', Icons.comment, color),
-                const SizedBox(height: 12),
-                _buildDetailRow('Effective Date', item['effectiveDate'] ?? 'N/A', Icons.calendar_today, color),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(Icons.receipt_long, color: color, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item['name'] ?? 'Unknown Item',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
+            if (item['hsnCode']?.isNotEmpty == true ||
+                item['remark']?.isNotEmpty == true ||
+                item['effectiveDate']?.isNotEmpty == true)
+              const SizedBox(height: 10),
+            if (item['hsnCode']?.isNotEmpty == true ||
+                item['remark']?.isNotEmpty == true ||
+                item['effectiveDate']?.isNotEmpty == true)
+              const Divider(height: 1),
+            if (item['hsnCode']?.isNotEmpty == true ||
+                item['remark']?.isNotEmpty == true ||
+                item['effectiveDate']?.isNotEmpty == true)
+              const SizedBox(height: 10),
+            if (item['hsnCode']?.isNotEmpty == true)
+              _buildInfoRow(
+                Icons.qr_code_2,
+                'HSN Code',
+                item['hsnCode'],
+                color,
+              ),
+            if (item['remark']?.isNotEmpty == true)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: _buildInfoRow(
+                  Icons.info_outline,
+                  'Remarks',
+                  item['remark'],
+                  color,
+                ),
+              ),
+            if (item['effectiveDate']?.isNotEmpty == true)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: _buildInfoRow(
+                  Icons.calendar_today,
+                  'Effective Date',
+                  item['effectiveDate'],
+                  color,
+                ),
+              ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: color.withOpacity(0.7)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
