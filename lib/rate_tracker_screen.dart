@@ -31,8 +31,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   }
 
   // Fetch GST Rates from Firebase Firestore
-  // Structure: GST Rates/{rate}/{subcollection}/{item}
-  // Example: GST Rates/0%/Bangles of Lac_Shellac/{itemId}
+  // Queries all known GST categories across all rate documents
   Future<void> _fetchGSTRatesFromFirebase() async {
     setState(() {
       _isLoadingRates = true;
@@ -40,85 +39,139 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
 
     try {
       print('=== STARTING GST RATES FETCH ===');
-      print('User authenticated: ${_firestore.app.name}');
       
-      // Fetch from "GST Rates" collection
-      print('Querying collection: "GST Rates"');
-      final QuerySnapshot snapshot = await _firestore.collection('GST Rates').get();
+      // Complete list of all GST categories in your database
+      final List<String> allCategories = [
+        'Glass Bangles',
+        'Earthen Pots & Clay Lamps',
+        'Bangles of Lac/Shellac',
+        'Silver Filigree Work',
+        'Handmade Imitation Jewellery',
+        'German Silver Jewellery',
+        'Cuff-links & Studs',
+        'Daily Essentials & Food Items',
+        'Agricultural Equipment',
+        'Essential Oils & Attars',
+        'Agarbatti & Dhoop Batti',
+        'Wooden Frames & Furniture',
+        'Wooden Tableware & Kitchenware',
+        'Wooden Statuettes & Ornaments',
+        'Wooden Carving & Inlay Work',
+        'Cork & Sholapith Articles',
+        'Basketwork & Wickerwork',
+        'Bamboo & Rattan Items',
+        'Hand-made Paper',
+        'Paper Mache Articles',
+        'Tapestries & Hand-made Lace',
+        'Hand Embroidered Articles',
+        'Quilted Textiles',
+        'Hand-painted Dress Materials',
+        'Hand Embroidered Shawls',
+        'Stone Carving & Inlay Work',
+        'Porcelain & China Tableware',
+        'Clay & Ceramic Tableware',
+        'Ceramic Statuettes & Ornaments',
+        'Glass Art Ware & Vases',
+        'Footwear (under Rs 2,500/pair)',
+        'Apparel (under Rs 2,500/piece)',
+        'Textile Articles (under Rs 2,500)',
+        'Knitted Hats & Headgear',
+        'Walking Sticks & Riding Crops',
+        'Feather Dusters',
+        'Worked Ivory, Bone, Tortoise Shell',
+        'Hand Carvings & Lac Articles',
+        'Hand Paintings & Pastels',
+        'Drawings, Mosaics & Collages',
+        'Original Engravings & Prints',
+        'Original Sculptures',
+        'Postage Stamps & Collections',
+        'Antiques (over 100 years)',
+        'Pens',
+        'Candles',
+        'Handbags (Textile Materials)',
+        'Mirror Ornaments',
+        'Table & Kitchen Utensils',
+        'Metal Bells & Gongs',
+        'Metal Picture Frames',
+        'Idols (Wood/Stone/Metal)',
+        'Coir Products',
+        'Cotton Quilts (under Rs 2,500)',
+        'Hurricane Lanterns & Kerosene Lamps',
+        'Handcrafted Lamps',
+        'Bamboo, Rattan, Cane Furniture',
+        'Broomsticks',
+        'Printed Materials',
+        'Packaging Containers',
+        'Renewable Energy Devices',
+        'General Manufactured Goods',
+        'Most Services',
+        'Electronics & Appliances',
+        'Automobiles',
+        'Electrical Fixtures & Lighting',
+        'String Musical Instruments',
+        'Wind Musical Instruments',
+        'Percussion Instruments',
+        'Apparel (Rs 2,500 above)',
+        'Textile Articles (Rs 2,500+)',
+        'Footwear Parts & Uppers',
+        'Other Headgear',
+        'Drinking Glasses & Glassware',
+        'Other Ceramic Articles',
+        'Imitation Pearls & Smallwares',
+        'Incense (Non-Agarbatti)',
+        'Plastic Containers & Boxes',
+        'Premium Handbags',
+        'Buttons & Fasteners',
+        'Pen & Pencil Holders',
+        'Artificial Flowers',
+        'Wooden Office & Bedroom Furniture',
+        'Bedding & Mattresses',
+        'Electric Ceiling & Wall Lighting',
+        'Christmas Festive Articles',
+        'Worked Mineral Carving',
+        'Other items (Not in 0-5%)',
+        'Smoking Pipes & Cigar Holders',
+        'Other Luxury & Sin Goods',
+        'Bangles of Lac_Shellac', // Alternative naming
+      ];
       
-      print('Query completed. Found ${snapshot.docs.length} rate documents');
+      // Get all rate documents
+      final rateDocsSnapshot = await _firestore.collection('GST Rates').get();
+      print('Found ${rateDocsSnapshot.docs.length} rate documents: ${rateDocsSnapshot.docs.map((d) => d.id).toList()}');
       
-      if (snapshot.docs.isEmpty) {
-        print('WARNING: No documents found in "GST Rates" collection');
-        
+      if (rateDocsSnapshot.docs.isEmpty) {
         setState(() {
           _gstRatesData = {};
           _isLoadingRates = false;
         });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No GST rates found in Firebase'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 5),
-            ),
-          );
-        }
         return;
       }
       
       Map<String, List<Map<String, dynamic>>> ratesMap = {};
       
-      for (var rateDoc in snapshot.docs) {
-        final rate = rateDoc.id; // e.g., "0%", "5%", "12%"
-        final rateData = rateDoc.data() as Map<String, dynamic>;
+      // For each rate document, check all categories
+      for (var rateDoc in rateDocsSnapshot.docs) {
+        final rate = rateDoc.id;
+        print('\n--- Processing rate: $rate ---');
         
-        print('\n--- Processing rate document: $rate ---');
-        print('Document data: $rateData');
+        ratesMap[rate] = [];
+        int foundCategories = 0;
         
-        // Initialize rate if not exists
-        if (!ratesMap.containsKey(rate)) {
-          ratesMap[rate] = [];
-        }
-        
-        // Get categories from the "categories" field in the rate document
-        // This field should be an array listing subcollection names
-        List<dynamic> categories = [];
-        
-        if (rateData.containsKey('categories') && rateData['categories'] is List) {
-          categories = rateData['categories'] as List<dynamic>;
-          print('✓ Found "categories" field with ${categories.length} items: $categories');
-        } else {
-          print('⚠ No "categories" field found in $rate document');
-          print('⚠ Add a "categories" array field to this document in Firebase Console');
-          print('⚠ Example: categories: ["Earthen Pots & Clay Lamps", "Bangles of Lac_Shellac"]');
-          continue; // Skip this rate if no categories defined
-        }
-        
-        print('Fetching items from ${categories.length} categories');
-        
-        // Fetch items from each subcollection
-        for (var category in categories) {
-          final categoryName = category.toString();
-          print('  → Querying subcollection: "$categoryName"');
-          
+        // Try each category
+        for (var categoryName in allCategories) {
           try {
-            // Query the subcollection
-            final subcollectionRef = _firestore
+            final itemsSnapshot = await _firestore
                 .collection('GST Rates')
                 .doc(rate)
-                .collection(categoryName);
-            
-            final itemsSnapshot = await subcollectionRef.get();
+                .collection(categoryName)
+                .get();
             
             if (itemsSnapshot.docs.isNotEmpty) {
-              print('  ✓ Found ${itemsSnapshot.docs.length} items in "$categoryName"');
+              foundCategories++;
+              print('  ✓ $categoryName: ${itemsSnapshot.docs.length} items');
               
-              // Process each item document
               for (var itemDoc in itemsSnapshot.docs) {
                 final itemData = itemDoc.data();
-                print('    - ${itemData['product_category']} (HSN: ${itemData['hsn_code']})');
                 
                 ratesMap[rate]!.add({
                   'id': itemDoc.id,
@@ -129,15 +182,13 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   'effectiveDate': itemData['effective_date']?.toString() ?? '',
                 });
               }
-            } else {
-              print('  ⚠ Subcollection "$categoryName" is empty');
             }
           } catch (e) {
-            print('  ✗ Error fetching "$categoryName": $e');
+            // Silently skip non-existent subcollections
           }
         }
         
-        print('Total items loaded for $rate: ${ratesMap[rate]!.length}');
+        print('Total: ${ratesMap[rate]!.length} items from $foundCategories categories');
       }
       
       setState(() {
