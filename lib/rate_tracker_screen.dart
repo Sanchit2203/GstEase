@@ -40,6 +40,25 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     try {
       print('=== STARTING OPTIMIZED GST RATES FETCH ===');
       
+      // First, get all rate documents to know what rates exist
+      final rateDocsSnapshot = await _firestore.collection('GST Rates').get();
+      
+      if (rateDocsSnapshot.docs.isEmpty) {
+        setState(() {
+          _gstRatesData = {};
+          _isLoadingRates = false;
+        });
+        return;
+      }
+      
+      print('Found ${rateDocsSnapshot.docs.length} rate documents: ${rateDocsSnapshot.docs.map((d) => d.id).toList()}');
+      
+      // Dynamically initialize rates map based on what exists in Firebase
+      Map<String, List<Map<String, dynamic>>> ratesMap = {};
+      for (var rateDoc in rateDocsSnapshot.docs) {
+        ratesMap[rateDoc.id] = [];
+      }
+      
       // All GST categories - we'll query them in parallel
       final List<String> allCategories = [
         'Glass Bangles', 'Earthen Pots & Clay Lamps', 'Bangles of Lac/Shellac',
@@ -73,10 +92,6 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
         'Christmas Festive Articles', 'Worked Mineral Carving', 'Other items (Not in 0-5%)',
         'Smoking Pipes & Cigar Holders', 'Other Luxury & Sin Goods',
       ];
-      
-      Map<String, List<Map<String, dynamic>>> ratesMap = {
-        '0%': [], '3%': [], '5%': [], '18%': [], '40%': [],
-      };
       
       int totalItems = 0;
       int processedCategories = 0;
