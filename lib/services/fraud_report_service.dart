@@ -12,12 +12,18 @@ class FraudReportService {
     required String description,
   }) async {
     try {
+      print('Submitting fraud report for UPI ID: $upiId');
       final user = _auth.currentUser;
       if (user == null) {
+        print('User not authenticated');
         throw Exception('User not authenticated');
       }
 
+      print('Current user: ${user.uid} (${user.email})');
+      
       final normalizedUpiId = upiId.trim().toLowerCase();
+      print('Normalized UPI ID: $normalizedUpiId');
+      
       final now = DateTime.now();
       
       // Reference to the reported UPI IDs collection
@@ -25,16 +31,20 @@ class FraudReportService {
           .collection('reported_upi_ids')
           .doc(normalizedUpiId);
 
+      print('Starting transaction...');
+      
       // Use a transaction to ensure data consistency
       await _firestore.runTransaction((transaction) async {
         final docSnapshot = await transaction.get(reportedUpiRef);
         
         if (docSnapshot.exists) {
+          print('Document exists, updating...');
           // Check if user has already reported this UPI ID
           final data = docSnapshot.data()!;
           final reporters = List<String>.from(data['reporters'] ?? []);
           
           if (reporters.contains(user.uid)) {
+            print('User has already reported this UPI ID');
             throw Exception('You have already reported this UPI ID');
           }
           
@@ -45,6 +55,7 @@ class FraudReportService {
             'reporters': FieldValue.arrayUnion([user.uid]),
           });
         } else {
+          print('Creating new report document...');
           // Create new report document
           transaction.set(reportedUpiRef, {
             'upi_id': normalizedUpiId,
@@ -58,6 +69,7 @@ class FraudReportService {
         
         // Add individual report details
         final reportRef = reportedUpiRef.collection('reports').doc();
+        print('Adding individual report with ID: ${reportRef.id}');
         transaction.set(reportRef, {
           'reporter_uid': user.uid,
           'reporter_email': user.email,
@@ -67,8 +79,11 @@ class FraudReportService {
         });
       });
       
+      print('Report submitted successfully');
       return true;
     } catch (e) {
+      print('Error submitting fraud report: $e');
+      print('Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
@@ -76,17 +91,27 @@ class FraudReportService {
   /// Get report information for a UPI ID
   static Future<Map<String, dynamic>?> getUpiIdReportInfo(String upiId) async {
     try {
+      print('Fetching report info for UPI ID: $upiId');
       final normalizedUpiId = upiId.trim().toLowerCase();
+      print('Normalized UPI ID: $normalizedUpiId');
+      
       final docSnapshot = await _firestore
           .collection('reported_upi_ids')
           .doc(normalizedUpiId)
           .get();
 
+      print('Document exists: ${docSnapshot.exists}');
+      
       if (docSnapshot.exists) {
-        return docSnapshot.data();
+        final data = docSnapshot.data();
+        print('Report data: $data');
+        return data;
       }
+      print('No reports found for this UPI ID');
       return null;
     } catch (e) {
+      print('Error fetching UPI report info: $e');
+      print('Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
@@ -124,11 +149,15 @@ class FraudReportService {
   /// Get user's report history
   static Future<List<Map<String, dynamic>>> getUserReportHistory() async {
     try {
+      print('Fetching user report history...');
       final user = _auth.currentUser;
       if (user == null) {
+        print('User not authenticated');
         throw Exception('User not authenticated');
       }
 
+      print('User UID: ${user.uid}');
+      
       final querySnapshot = await _firestore
           .collectionGroup('reports')
           .where('reporter_uid', isEqualTo: user.uid)
@@ -136,6 +165,8 @@ class FraudReportService {
           .limit(50)
           .get();
 
+      print('Found ${querySnapshot.docs.length} reports');
+      
       return querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
@@ -143,6 +174,8 @@ class FraudReportService {
         return data;
       }).toList();
     } catch (e) {
+      print('Error fetching user report history: $e');
+      print('Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }

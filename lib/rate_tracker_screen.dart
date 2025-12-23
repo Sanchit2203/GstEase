@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,34 +14,12 @@ class RateTrackerScreen extends StatefulWidget {
 
 class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedCategory = 'All Categories';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Map<String, dynamic>> _jsonUpdates = [];
   bool _isLoadingUpdates = false;
   String? _lastUpdateTime;
-  
-  // Sample GST rate data
-  final List<GSTRateItem> _gstRates = [
-    GSTRateItem('Essential Goods', 'Rice, Wheat, Milk, Vegetables', 0, Colors.green),
-    GSTRateItem('Basic Necessities', 'Salt, Sugar, Tea, Coffee', 5, Colors.blue),
-    GSTRateItem('Processed Foods', 'Biscuits, Namkeen, Sweets', 12, Colors.orange),
-    GSTRateItem('Consumer Goods', 'Soaps, Toothpaste, Shampoo', 18, Colors.purple),
-    GSTRateItem('Electronics', 'Mobile Phones, Laptops, TV', 18, Colors.indigo),
-    GSTRateItem('Luxury Items', 'Cars, Cigarettes, Aerated Drinks', 40, Colors.red),
-    GSTRateItem('Textiles', 'Fabrics, Readymade Garments', 12, Colors.teal),
-    GSTRateItem('Medicines', 'Life Saving Drugs, Formulations', 12, Colors.cyan),
-  ];
-  
-  final List<String> _categories = [
-    'All Categories',
-    'Essential Goods',
-    'Basic Necessities', 
-    'Processed Foods',
-    'Consumer Goods',
-    'Electronics',
-    'Luxury Items',
-    'Textiles',
-    'Medicines',
-  ];
+  bool _isLoadingRates = false;
+  Map<String, List<Map<String, dynamic>>> _gstRatesData = {};
   
   @override
   void initState() {
@@ -48,6 +27,104 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     _tabController = TabController(length: 3, vsync: this);
     _loadCachedUpdates();
     _fetchUpdates();
+    _fetchGSTRatesFromFirebase();
+  }
+
+  // Fetch GST Rates from Firebase Firestore
+  Future<void> _fetchGSTRatesFromFirebase() async {
+    setState(() {
+      _isLoadingRates = true;
+    });
+
+    try {
+      print('Fetching GST rates from Firestore...');
+      // Fetch from "GST Rates" collection
+      final QuerySnapshot snapshot = await _firestore.collection('GST Rates').get();
+      
+      print('Found ${snapshot.docs.length} rate categories');
+      
+      if (snapshot.docs.isEmpty) {
+        print('No documents in GST Rates collection. Please add data to Firebase.');
+        setState(() {
+          _gstRatesData = {};
+          _isLoadingRates = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No GST rates found. Please add data to Firebase Firestore collection "GST Rates".'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+      
+      Map<String, List<Map<String, dynamic>>> ratesMap = {};
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String rate = data['rate'] ?? doc.id;
+        
+        print('Processing rate: $rate (doc id: ${doc.id})');
+        
+        // Get items subcollection for this rate
+        final itemsSnapshot = await _firestore
+            .collection('GST Rates')
+            .doc(doc.id)
+            .collection('items')
+            .get();
+        
+        print('Found ${itemsSnapshot.docs.length} items for rate $rate');
+        
+        List<Map<String, dynamic>> items = [];
+        for (var itemDoc in itemsSnapshot.docs) {
+          final itemData = itemDoc.data();
+          items.add({
+            'id': itemDoc.id,
+            'name': itemData['name'] ?? itemDoc.id,
+            'hsnCode': itemData['hsnCode'] ?? '',
+            'remark': itemData['remark'] ?? '',
+            'effectiveDate': itemData['effectiveDate'] ?? '',
+          });
+        }
+        
+        ratesMap[rate] = items;
+      }
+      
+      setState(() {
+        _gstRatesData = ratesMap;
+        _isLoadingRates = false;
+      });
+      
+      print('Successfully loaded ${ratesMap.length} rate categories');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Loaded ${ratesMap.length} GST rate categories'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error fetching GST rates: $e');
+      print('Stack trace: ${StackTrace.current}');
+      setState(() {
+        _isLoadingRates = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading GST rates: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Fetch GST rate updates from News API
@@ -419,12 +496,24 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     _tabController.dispose();
     super.dispose();
   }
-  
-  List<GSTRateItem> get _filteredRates {
-    if (_selectedCategory == 'All Categories') {
-      return _gstRates;
+
+  Color _getColorForRate(String rate) {
+    switch (rate) {
+      case '0%':
+        return Colors.green;
+      case '5%':
+        return Colors.blue;
+      case '12%':
+        return Colors.orange;
+      case '18%':
+        return Colors.purple;
+      case '28%':
+        return Colors.deepPurple;
+      case '40%':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
-    return _gstRates.where((item) => item.category == _selectedCategory).toList();
   }
 
   @override
@@ -465,17 +554,19 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _fetchGSTRatesFromFirebase();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Refreshing GST rates...')),
+              );
+            },
+            tooltip: 'Refresh Rates',
+          ),
+          IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () => _showApiKeyInfo(),
             tooltip: 'API Key Info',
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Search feature coming soon!')),
-              );
-            },
           ),
           IconButton(
             icon: _isLoadingUpdates 
@@ -510,161 +601,212 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   }
   
   Widget _buildRatesTab() {
-    return Column(
-      children: [
-        // Category Filter
-        Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = category == _selectedCategory;
-              
-              return Container(
-                margin: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(category),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedCategory = category;
-                    });
-                  },
-                  backgroundColor: Colors.grey.shade200,
-                  selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                  labelStyle: TextStyle(
-                    color: isSelected 
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade700,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
+    if (_isLoadingRates) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_gstRatesData.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'No GST rates available',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _fetchGSTRatesFromFirebase,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reload'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Sort rates in logical order
+    final sortedRates = _gstRatesData.keys.toList()..sort((a, b) {
+      final aNum = int.tryParse(a.replaceAll('%', '')) ?? 0;
+      final bNum = int.tryParse(b.replaceAll('%', '')) ?? 0;
+      return aNum.compareTo(bNum);
+    });
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: sortedRates.length,
+      itemBuilder: (context, index) {
+        final rate = sortedRates[index];
+        final items = _gstRatesData[rate] ?? [];
+        final color = _getColorForRate(rate);
+        
+        return _buildRateCard(rate, items, color);
+      },
+    );
+  }
+  
+  Widget _buildRateCard(String rate, List<Map<String, dynamic>> items, Color color) {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
-              );
-            },
+              ],
+            ),
+            child: Center(
+              child: Text(
+                rate,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          title: Text(
+            'GST Rate: $rate',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 16,
+            ),
+          ),
+          subtitle: Text(
+            '${items.length} item${items.length != 1 ? 's' : ''}',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 14,
+            ),
+          ),
+          children: items.isEmpty 
+              ? [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'No items in this category',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ),
+                  )
+                ]
+              : items.map((item) => _buildItemTile(item, color)).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemTile(Map<String, dynamic> item, Color color) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        leading: Icon(Icons.receipt, color: color, size: 20),
+        title: Text(
+          item['name'] ?? 'Unknown Item',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
-        
-        // Rates List
+        subtitle: item['hsnCode']?.isNotEmpty == true
+            ? Text(
+                'HSN: ${item['hsnCode']}',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              )
+            : null,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow('HSN Code', item['hsnCode'] ?? 'N/A', Icons.qr_code_2, color),
+                const SizedBox(height: 12),
+                _buildDetailRow('Remark', item['remark'] ?? 'N/A', Icons.comment, color),
+                const SizedBox(height: 12),
+                _buildDetailRow('Effective Date', item['effectiveDate'] ?? 'N/A', Icons.calendar_today, color),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: _filteredRates.length,
-            itemBuilder: (context, index) {
-              return _buildRateCard(_filteredRates[index]);
-            },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
   
-  Widget _buildRateCard(GSTRateItem item) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              item.color.withOpacity(0.1),
-              Colors.white,
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // Rate Badge
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: item.color,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: item.color.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    '${item.rate}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.category,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: item.color,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: item.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _getRateLabel(item.rate),
-                        style: TextStyle(
-                          color: item.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Arrow
-              Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey.shade400,
-                size: 16,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
   Widget _buildOverviewTab() {
+    if (_isLoadingRates) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Calculate statistics
+    int totalCategories = _gstRatesData.keys.length;
+    int totalItems = 0;
+    Map<String, int> rateDistribution = {};
+    
+    _gstRatesData.forEach((rate, items) {
+      totalItems += items.length;
+      rateDistribution[rate] = items.length;
+    });
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -673,17 +815,23 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
           // Stats Cards
           Row(
             children: [
-              Expanded(child: _buildStatCard('Total Categories', '8', Icons.category, Colors.blue)),
+              Expanded(
+                child: _buildStatCard(
+                  'Total Categories',
+                  totalCategories.toString(),
+                  Icons.category,
+                  Colors.blue,
+                ),
+              ),
               const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Avg Rate', '15.5%', Icons.percent, Colors.orange)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildStatCard('Exempt Items', '1', Icons.free_breakfast, Colors.green)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Luxury Tax', '40%', Icons.diamond, Colors.red)),
+              Expanded(
+                child: _buildStatCard(
+                  'Total Items',
+                  totalItems.toString(),
+                  Icons.inventory,
+                  Colors.orange,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 32),
@@ -711,15 +859,25 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
                   ),
                   const SizedBox(height: 20),
                   
-                  _buildRateDistributionBar('0%', 1, Colors.green, 8),
-                  const SizedBox(height: 12),
-                  _buildRateDistributionBar('5%', 1, Colors.blue, 8),
-                  const SizedBox(height: 12),
-                  _buildRateDistributionBar('12%', 3, Colors.orange, 8),
-                  const SizedBox(height: 12),
-                  _buildRateDistributionBar('18%', 2, Colors.purple, 8),
-                  const SizedBox(height: 12),
-                  _buildRateDistributionBar('40%', 1, Colors.red, 8),
+                  if (rateDistribution.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text('No data available'),
+                      ),
+                    )
+                  else
+                    ...rateDistribution.entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: _buildRateDistributionBar(
+                          entry.key,
+                          entry.value,
+                          _getColorForRate(entry.key),
+                          totalItems,
+                        ),
+                      );
+                    }).toList(),
                 ],
               ),
             ),
@@ -921,19 +1079,6 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
         ],
       ),
     );
-  }
-  
-
-  
-  String _getRateLabel(int rate) {
-    switch (rate) {
-      case 0: return 'Exempt';
-      case 5: return 'Essential';
-      case 12: return 'Standard';
-      case 18: return 'Standard+';
-      case 28: return 'Luxury';
-      default: return 'Other';
-    }
   }
 
   // Build update item from JSON data
@@ -1381,13 +1526,4 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       return dateString;
     }
   }
-}
-
-class GSTRateItem {
-  final String category;
-  final String description;
-  final int rate;
-  final Color color;
-  
-  GSTRateItem(this.category, this.description, this.rate, this.color);
 }

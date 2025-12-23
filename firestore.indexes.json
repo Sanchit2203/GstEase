@@ -16,16 +16,6 @@
     },
     {
       "collectionGroup": "reports",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "reported_at",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "reports",
       "queryScope": "COLLECTION_GROUP", 
       "fields": [
         {
