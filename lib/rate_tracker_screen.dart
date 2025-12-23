@@ -31,165 +31,103 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   }
 
   // Fetch GST Rates from Firebase Firestore
-  // Queries all known GST categories across all rate documents
+  // Uses optimized parallel queries for fast loading
   Future<void> _fetchGSTRatesFromFirebase() async {
     setState(() {
       _isLoadingRates = true;
     });
 
     try {
-      print('=== STARTING GST RATES FETCH ===');
+      print('=== STARTING OPTIMIZED GST RATES FETCH ===');
       
-      // Complete list of all GST categories in your database
+      // All GST categories - we'll query them in parallel
       final List<String> allCategories = [
-        'Glass Bangles',
-        'Earthen Pots & Clay Lamps',
-        'Bangles of Lac/Shellac',
-        'Silver Filigree Work',
-        'Handmade Imitation Jewellery',
-        'German Silver Jewellery',
-        'Cuff-links & Studs',
-        'Daily Essentials & Food Items',
-        'Agricultural Equipment',
-        'Essential Oils & Attars',
-        'Agarbatti & Dhoop Batti',
-        'Wooden Frames & Furniture',
-        'Wooden Tableware & Kitchenware',
-        'Wooden Statuettes & Ornaments',
-        'Wooden Carving & Inlay Work',
-        'Cork & Sholapith Articles',
-        'Basketwork & Wickerwork',
-        'Bamboo & Rattan Items',
-        'Hand-made Paper',
-        'Paper Mache Articles',
-        'Tapestries & Hand-made Lace',
-        'Hand Embroidered Articles',
-        'Quilted Textiles',
-        'Hand-painted Dress Materials',
-        'Hand Embroidered Shawls',
-        'Stone Carving & Inlay Work',
-        'Porcelain & China Tableware',
-        'Clay & Ceramic Tableware',
-        'Ceramic Statuettes & Ornaments',
-        'Glass Art Ware & Vases',
-        'Footwear (under Rs 2,500/pair)',
-        'Apparel (under Rs 2,500/piece)',
-        'Textile Articles (under Rs 2,500)',
-        'Knitted Hats & Headgear',
-        'Walking Sticks & Riding Crops',
-        'Feather Dusters',
-        'Worked Ivory, Bone, Tortoise Shell',
-        'Hand Carvings & Lac Articles',
-        'Hand Paintings & Pastels',
-        'Drawings, Mosaics & Collages',
-        'Original Engravings & Prints',
-        'Original Sculptures',
-        'Postage Stamps & Collections',
-        'Antiques (over 100 years)',
-        'Pens',
-        'Candles',
-        'Handbags (Textile Materials)',
-        'Mirror Ornaments',
-        'Table & Kitchen Utensils',
-        'Metal Bells & Gongs',
-        'Metal Picture Frames',
-        'Idols (Wood/Stone/Metal)',
-        'Coir Products',
-        'Cotton Quilts (under Rs 2,500)',
-        'Hurricane Lanterns & Kerosene Lamps',
-        'Handcrafted Lamps',
-        'Bamboo, Rattan, Cane Furniture',
-        'Broomsticks',
-        'Printed Materials',
-        'Packaging Containers',
-        'Renewable Energy Devices',
-        'General Manufactured Goods',
-        'Most Services',
-        'Electronics & Appliances',
-        'Automobiles',
-        'Electrical Fixtures & Lighting',
-        'String Musical Instruments',
-        'Wind Musical Instruments',
-        'Percussion Instruments',
-        'Apparel (Rs 2,500 above)',
-        'Textile Articles (Rs 2,500+)',
-        'Footwear Parts & Uppers',
-        'Other Headgear',
-        'Drinking Glasses & Glassware',
-        'Other Ceramic Articles',
-        'Imitation Pearls & Smallwares',
-        'Incense (Non-Agarbatti)',
-        'Plastic Containers & Boxes',
-        'Premium Handbags',
-        'Buttons & Fasteners',
-        'Pen & Pencil Holders',
-        'Artificial Flowers',
-        'Wooden Office & Bedroom Furniture',
-        'Bedding & Mattresses',
-        'Electric Ceiling & Wall Lighting',
-        'Christmas Festive Articles',
-        'Worked Mineral Carving',
-        'Other items (Not in 0-5%)',
-        'Smoking Pipes & Cigar Holders',
-        'Other Luxury & Sin Goods',
-        'Bangles of Lac_Shellac', // Alternative naming
+        'Glass Bangles', 'Earthen Pots & Clay Lamps', 'Bangles of Lac/Shellac',
+        'Bangles of Lac_Shellac', 'Silver Filigree Work', 'Handmade Imitation Jewellery',
+        'German Silver Jewellery', 'Cuff-links & Studs', 'Daily Essentials & Food Items',
+        'Agricultural Equipment', 'Essential Oils & Attars', 'Agarbatti & Dhoop Batti',
+        'Wooden Frames & Furniture', 'Wooden Tableware & Kitchenware', 'Wooden Statuettes & Ornaments',
+        'Wooden Carving & Inlay Work', 'Cork & Sholapith Articles', 'Basketwork & Wickerwork',
+        'Bamboo & Rattan Items', 'Hand-made Paper', 'Paper Mache Articles',
+        'Tapestries & Hand-made Lace', 'Hand Embroidered Articles', 'Quilted Textiles',
+        'Hand-painted Dress Materials', 'Hand Embroidered Shawls', 'Stone Carving & Inlay Work',
+        'Porcelain & China Tableware', 'Clay & Ceramic Tableware', 'Ceramic Statuettes & Ornaments',
+        'Glass Art Ware & Vases', 'Footwear (under Rs 2,500/pair)', 'Apparel (under Rs 2,500/piece)',
+        'Textile Articles (under Rs 2,500)', 'Knitted Hats & Headgear', 'Walking Sticks & Riding Crops',
+        'Feather Dusters', 'Worked Ivory, Bone, Tortoise Shell', 'Hand Carvings & Lac Articles',
+        'Hand Paintings & Pastels', 'Drawings, Mosaics & Collages', 'Original Engravings & Prints',
+        'Original Sculptures', 'Postage Stamps & Collections', 'Antiques (over 100 years)',
+        'Pens', 'Candles', 'Handbags (Textile Materials)', 'Mirror Ornaments',
+        'Table & Kitchen Utensils', 'Metal Bells & Gongs', 'Metal Picture Frames',
+        'Idols (Wood/Stone/Metal)', 'Coir Products', 'Cotton Quilts (under Rs 2,500)',
+        'Hurricane Lanterns & Kerosene Lamps', 'Handcrafted Lamps', 'Bamboo, Rattan, Cane Furniture',
+        'Broomsticks', 'Printed Materials', 'Packaging Containers', 'Renewable Energy Devices',
+        'General Manufactured Goods', 'Most Services', 'Electronics & Appliances',
+        'Automobiles', 'Electrical Fixtures & Lighting', 'String Musical Instruments',
+        'Wind Musical Instruments', 'Percussion Instruments', 'Apparel (Rs 2,500 above)',
+        'Textile Articles (Rs 2,500+)', 'Footwear Parts & Uppers', 'Other Headgear',
+        'Drinking Glasses & Glassware', 'Other Ceramic Articles', 'Imitation Pearls & Smallwares',
+        'Incense (Non-Agarbatti)', 'Plastic Containers & Boxes', 'Premium Handbags',
+        'Buttons & Fasteners', 'Pen & Pencil Holders', 'Artificial Flowers',
+        'Wooden Office & Bedroom Furniture', 'Bedding & Mattresses', 'Electric Ceiling & Wall Lighting',
+        'Christmas Festive Articles', 'Worked Mineral Carving', 'Other items (Not in 0-5%)',
+        'Smoking Pipes & Cigar Holders', 'Other Luxury & Sin Goods',
       ];
       
-      // Get all rate documents
-      final rateDocsSnapshot = await _firestore.collection('GST Rates').get();
-      print('Found ${rateDocsSnapshot.docs.length} rate documents: ${rateDocsSnapshot.docs.map((d) => d.id).toList()}');
+      Map<String, List<Map<String, dynamic>>> ratesMap = {
+        '0%': [], '3%': [], '5%': [], '18%': [], '40%': [],
+      };
       
-      if (rateDocsSnapshot.docs.isEmpty) {
-        setState(() {
-          _gstRatesData = {};
-          _isLoadingRates = false;
-        });
-        return;
-      }
+      int totalItems = 0;
+      int processedCategories = 0;
       
-      Map<String, List<Map<String, dynamic>>> ratesMap = {};
-      
-      // For each rate document, check all categories
-      for (var rateDoc in rateDocsSnapshot.docs) {
-        final rate = rateDoc.id;
-        print('\n--- Processing rate: $rate ---');
+      // Process categories in batches of 10 for faster loading
+      for (int i = 0; i < allCategories.length; i += 10) {
+        final batch = allCategories.skip(i).take(10).toList();
         
-        ratesMap[rate] = [];
-        int foundCategories = 0;
-        
-        // Try each category
-        for (var categoryName in allCategories) {
-          try {
-            final itemsSnapshot = await _firestore
-                .collection('GST Rates')
-                .doc(rate)
-                .collection(categoryName)
-                .get();
-            
-            if (itemsSnapshot.docs.isNotEmpty) {
-              foundCategories++;
-              print('  ✓ $categoryName: ${itemsSnapshot.docs.length} items');
+        // Query all rates in parallel for this batch
+        await Future.wait(
+          batch.map((categoryName) async {
+            try {
+              // Use collection group query to get all items from this category across all rates
+              final querySnapshot = await _firestore
+                  .collectionGroup(categoryName)
+                  .get();
               
-              for (var itemDoc in itemsSnapshot.docs) {
-                final itemData = itemDoc.data();
+              if (querySnapshot.docs.isNotEmpty) {
+                processedCategories++;
                 
-                ratesMap[rate]!.add({
-                  'id': itemDoc.id,
-                  'category': categoryName,
-                  'name': itemData['product_category']?.toString() ?? categoryName,
-                  'hsnCode': itemData['hsn_code']?.toString() ?? '',
-                  'remark': itemData['remarks']?.toString() ?? '',
-                  'effectiveDate': itemData['effective_date']?.toString() ?? '',
-                });
+                for (var doc in querySnapshot.docs) {
+                  // Extract rate from document path: GST Rates/{rate}/{category}/{item}
+                  final pathSegments = doc.reference.path.split('/');
+                  if (pathSegments.length >= 2) {
+                    final rate = pathSegments[1]; // e.g., "0%", "5%"
+                    
+                    if (ratesMap.containsKey(rate)) {
+                      final itemData = doc.data();
+                      
+                      ratesMap[rate]!.add({
+                        'id': doc.id,
+                        'category': categoryName,
+                        'name': itemData['product_category']?.toString() ?? categoryName,
+                        'hsnCode': itemData['hsn_code']?.toString() ?? '',
+                        'remark': itemData['remarks']?.toString() ?? '',
+                        'effectiveDate': itemData['effective_date']?.toString() ?? '',
+                      });
+                      
+                      totalItems++;
+                    }
+                  }
+                }
               }
+            } catch (e) {
+              // Silently skip errors
             }
-          } catch (e) {
-            // Silently skip non-existent subcollections
-          }
-        }
-        
-        print('Total: ${ratesMap[rate]!.length} items from $foundCategories categories');
+          }),
+        );
       }
+      
+      print('✓ Loaded $totalItems items from $processedCategories categories');
       
       setState(() {
         _gstRatesData = ratesMap;
