@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ManagerScreen extends StatefulWidget {
   const ManagerScreen({super.key});
@@ -47,6 +48,81 @@ class _ManagerScreenState extends State<ManagerScreen> {
       }
       _showResults = true;
     });
+  }
+
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open the link')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildWebResourceCard(String title, String description, String url, IconData icon, Color color) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _launchURL(url),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildResultCard(String title, String amount, String description, Color color) {
@@ -494,6 +570,80 @@ class _ManagerScreenState extends State<ManagerScreen> {
                     ),
                   ],
                 ),
+              ),
+
+              const SizedBox(height: 32),
+              Text(
+                'Investment Resources & Tools',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Explore investment platforms and calculators',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _buildWebResourceCard(
+                'Groww - Mutual Funds & Stocks',
+                'Start investing in mutual funds and stocks',
+                'https://groww.in',
+                Icons.trending_up,
+                Colors.green,
+              ),
+              _buildWebResourceCard(
+                'Zerodha - Trading Platform',
+                'India\'s largest stock broker for trading',
+                'https://zerodha.com',
+                Icons.show_chart,
+                Colors.blue,
+              ),
+              _buildWebResourceCard(
+                'ET Money - SIP Calculator',
+                'Calculate your SIP returns and plan investments',
+                'https://www.etmoney.com/mutual-funds/sip-calculator',
+                Icons.calculate,
+                Colors.purple,
+              ),
+              _buildWebResourceCard(
+                'ClearTax - Tax Saving',
+                'Tax planning and Section 80C calculator',
+                'https://cleartax.in/s/income-tax-calculator',
+                Icons.receipt_long,
+                Colors.orange,
+              ),
+              _buildWebResourceCard(
+                'Paytm Money - Investment',
+                'Invest in mutual funds, stocks & gold',
+                'https://www.paytmmoney.com',
+                Icons.account_balance_wallet,
+                Colors.indigo,
+              ),
+              _buildWebResourceCard(
+                'NPS - Pension Scheme',
+                'National Pension System for retirement',
+                'https://www.npscra.nsdl.co.in',
+                Icons.elderly,
+                Colors.teal,
+              ),
+              _buildWebResourceCard(
+                'PPF Calculator',
+                'Calculate Public Provident Fund returns',
+                'https://www.paisabazaar.com/saving-schemes/ppf-calculator/',
+                Icons.savings,
+                Colors.brown,
+              ),
+              _buildWebResourceCard(
+                'Financial Education - Varsity',
+                'Learn stock market & trading basics',
+                'https://zerodha.com/varsity',
+                Icons.school,
+                Colors.red,
               ),
             ],
           ],

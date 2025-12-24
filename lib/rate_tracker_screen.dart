@@ -1387,7 +1387,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
     );
   }
 
-  // Open news URL in browser
+  // Open news URL in in-app browser
   Future<void> _openNewsUrl(String url) async {
     try {
       final Uri uri = Uri.parse(url);
@@ -1396,14 +1396,14 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       if (await canLaunchUrl(uri)) {
         await launchUrl(
           uri,
-          mode: LaunchMode.externalApplication, // Opens in external browser
+          mode: LaunchMode.inAppWebView, // Opens in in-app browser
         );
         
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Opening article from ${uri.host}...'),
+              content: Text('Opening article in app...'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
