@@ -56,7 +56,7 @@ class _ManagerScreenState extends State<ManagerScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(
           uri,
-          mode: LaunchMode.inAppWebView,
+          mode: LaunchMode.inAppBrowserView,
         );
       } else {
         if (mounted) {

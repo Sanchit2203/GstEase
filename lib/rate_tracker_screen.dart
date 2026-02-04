@@ -1396,7 +1396,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       if (await canLaunchUrl(uri)) {
         await launchUrl(
           uri,
-          mode: LaunchMode.inAppWebView, // Opens in in-app browser
+          mode: LaunchMode.inAppBrowserView, // Opens in in-app browser
         );
         
         // Show success message
