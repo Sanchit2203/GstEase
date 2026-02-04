@@ -74,6 +74,76 @@ class _ManagerScreenState extends State<ManagerScreen> {
     }
   }
 
+  Future<void> _getAIFinancialAdvice() async {
+    // Create a detailed financial summary for AI analysis
+    String financialSummary = '''
+I need personalized financial advice based on my income:
+
+Monthly Salary: ₹${_monthlySalary.toStringAsFixed(0)}
+Yearly Salary: ₹${_yearlySalary.toStringAsFixed(0)}
+
+Please provide:
+1. Customized investment strategy for my income level
+2. Best mutual funds or investment options in India
+3. Tax-saving recommendations under Section 80C and other sections
+4. Emergency fund planning
+5. Retirement planning advice
+6. Risk management and insurance needs
+7. Short-term and long-term financial goals I should set
+
+Consider Indian financial markets and regulations in your advice.
+    ''';
+
+    // URL encode the prompt
+    String encodedPrompt = Uri.encodeComponent(financialSummary);
+    
+    // Show dialog to choose AI platform
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.psychology, color: Colors.purple.shade700),
+              const SizedBox(width: 8),
+              const Text('Choose AI Assistant'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select an AI platform for personalized financial advice:'),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.chat, color: Colors.green),
+                title: const Text('ChatGPT'),
+                subtitle: const Text('OpenAI\'s ChatGPT'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _launchURL('https://chat.openai.com/?q=$encodedPrompt');
+                },
+              ),
+              
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildWebResourceCard(String title, String description, String url, IconData icon, Color color) {
     return Card(
       elevation: 2,
@@ -292,6 +362,31 @@ class _ManagerScreenState extends State<ManagerScreen> {
                         ),
                       ),
                     ),
+                    if (_showResults) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _getAIFinancialAdvice,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            side: BorderSide(color: Colors.purple.shade700, width: 2),
+                          ),
+                          icon: Icon(Icons.psychology, color: Colors.purple.shade700),
+                          label: Text(
+                            'Get AI Financial Advice',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
