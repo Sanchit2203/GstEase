@@ -2,6 +2,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gstease/login_screen.dart';
+import 'package:gstease/admin_panel_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
     final User? user = FirebaseAuth.instance.currentUser;
     final String? userEmail = user?.email;
     final String userName = userEmail?.split('@')[0] ?? 'User';
+    final bool isAdmin = _isAdminUser(userEmail);
 
     return Container(
       decoration: BoxDecoration(
@@ -168,7 +170,28 @@ class ProfileScreen extends StatelessWidget {
                 _showAboutDialog(context);
               },
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+
+            // Admin Panel Option (only for admin users)
+            if (isAdmin)
+              ...[
+                _buildProfileOption(
+                  context,
+                  icon: Icons.admin_panel_settings,
+                  title: 'Admin Panel',
+                  subtitle: 'Manage app settings and users',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AdminPanelScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
+            const SizedBox(height: 16),
             
             // Logout Button
             Container(
@@ -371,5 +394,16 @@ class ProfileScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Check if the current user is an admin
+  bool _isAdminUser(String? email) {
+    // List of admin emails
+    const List<String> adminEmails = [
+      'admin@gstease.com',
+      'sanchit@gmail.com', // Add your admin email here
+    ];
+
+    return email != null && adminEmails.contains(email.toLowerCase());
   }
 }
