@@ -20,11 +20,14 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   String? _lastUpdateTime;
   bool _isLoadingRates = false;
   Map<String, List<Map<String, dynamic>>> _gstRatesData = {};
+  String _searchQuery = '';
+  late TextEditingController _searchController;
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _searchController = TextEditingController();
     _loadCachedUpdates();
     _fetchUpdates();
     _fetchGSTRatesFromFirebase();
@@ -553,6 +556,7 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -573,6 +577,37 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       default:
         return Colors.grey;
     }
+  }
+
+  // Filter GST rates based on search query
+  Map<String, List<Map<String, dynamic>>> _getFilteredRates() {
+    if (_searchQuery.isEmpty) {
+      return _gstRatesData;
+    }
+
+    final query = _searchQuery.toLowerCase();
+    final filtered = <String, List<Map<String, dynamic>>>{};
+
+    _gstRatesData.forEach((rate, items) {
+      final filteredItems = items.where((item) {
+        final name = (item['name'] ?? '').toString().toLowerCase();
+        final category = (item['category'] ?? '').toString().toLowerCase();
+        final hsnCode = (item['hsnCode'] ?? '').toString().toLowerCase();
+        final remark = (item['remark'] ?? '').toString().toLowerCase();
+
+        return name.contains(query) ||
+            category.contains(query) ||
+            hsnCode.contains(query) ||
+            remark.contains(query) ||
+            rate.toLowerCase().contains(query);
+      }).toList();
+
+      if (filteredItems.isNotEmpty) {
+        filtered[rate] = filteredItems;
+      }
+    });
+
+    return filtered;
   }
 
   @override
@@ -693,23 +728,99 @@ class _RateTrackerScreenState extends State<RateTrackerScreen> with TickerProvid
       );
     }
 
+    final filteredRates = _getFilteredRates();
+
     // Sort rates in logical order
-    final sortedRates = _gstRatesData.keys.toList()..sort((a, b) {
+    final sortedRates = filteredRates.keys.toList()..sort((a, b) {
       final aNum = int.tryParse(a.replaceAll('%', '')) ?? 0;
       final bNum = int.tryParse(b.replaceAll('%', '')) ?? 0;
       return aNum.compareTo(bNum);
     });
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: sortedRates.length,
-      itemBuilder: (context, index) {
-        final rate = sortedRates[index];
-        final items = _gstRatesData[rate] ?? [];
-        final color = _getColorForRate(rate);
-        
-        return _buildSimpleRateSection(rate, items, color);
-      },
+    return Column(
+      children: [
+        // Search box
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search by name, HSN code, or rate...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ),
+        // Results counter
+        if (_searchQuery.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'Found ${filteredRates.values.fold(0, (sum, items) => sum + items.length)} items',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        // Rates list
+        Expanded(
+          child: filteredRates.isEmpty && _searchQuery.isNotEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No results found for "$_searchQuery"',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                        child: const Text('Clear Search'),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: sortedRates.length,
+                  itemBuilder: (context, index) {
+                    final rate = sortedRates[index];
+                    final items = filteredRates[rate] ?? [];
+                    final color = _getColorForRate(rate);
+
+                    return _buildSimpleRateSection(rate, items, color);
+                  },
+                ),
+        ),
+      ],
     );
   }
   
