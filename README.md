@@ -80,8 +80,8 @@
 
 ## 📱 Screenshots
 
-<img width="300" height="400" alt="Screenshot_20260416_144426" src="https://github.com/user-attachments/assets/cacd0a67-36fb-41af-b499-7975c2586e70" />
-
+<img width="336" height="748" alt="Screenshot_20260416_144426" src="https://github.com/user-attachments/assets/cacd0a67-36fb-41af-b499-7975c2586e70" />
+<img width="336" height="748" alt="Screenshot_20260416_145230" src="https://github.com/user-attachments/assets/4a8a20ed-ddef-447e-a241-9c5f58f624aa" />
 
 
 ---
