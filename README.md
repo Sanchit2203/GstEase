@@ -80,7 +80,7 @@
 
 ## 📱 Screenshots
 
-<img width="1344" height="2992" alt="Screenshot_20260417_100458" src="https://github.com/user-attachments/assets/cc1f268c-e9f5-4969-96eb-79e124aa9419" />
+<img width="134" height="2992" alt="Screenshot_20260417_100458" src="https://github.com/user-attachments/assets/cc1f268c-e9f5-4969-96eb-79e124aa9419" />
 
 
 ---
